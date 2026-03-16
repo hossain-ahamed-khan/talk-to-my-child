@@ -33,7 +33,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import JobSeekerMainLogo from "@/public/images/login/logo.png";
+import AdminMainLogo from "@/public/images/main-logo.png";
 
 // Reusable nav item with tooltip support in collapsed state
 function NavItem({
@@ -80,37 +80,37 @@ const data = {
     home: [
         {
             title: "Home",
-            url: "/trainer",
+            url: "/admin",
             icon: House,
         },
         {
             title: "Messages",
-            url: "/trainer/message",
+            url: "/admin/message",
             icon: MessageSquare,
         },
         {
             title: "Forum",
-            url: "/trainer/forum",
+            url: "/admin/forum",
             icon: UsersRound,
         },
         {
             title: "Tools",
-            url: "/trainer/tools",
+            url: "/admin/tools",
             icon: Wrench,
         },
         {
             title: "New Course",
-            url: "/trainer/new-course",
+            url: "/admin/new-course",
             icon: SquarePlus,
         },
         {
             title: "My Courses",
-            url: "/trainer/my-courses",
+            url: "/admin/my-courses",
             icon: GraduationCap,
         },
         {
             title: "Profile",
-            url: "/trainer/profile",
+            url: "/admin/profile",
             icon: User,
         }
     ],
@@ -128,16 +128,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div className="flex items-center justify-center">
                     {isCollapsed ? (
                         <Image
-                            src={JobSeekerMainLogo}
-                            alt="JobSeeker Main Logo"
+                            src={AdminMainLogo}
+                            alt="Admin Main Logo"
                             width={32}
                             height={32}
                             className="object-contain"
                         />
                     ) : (
                         <Image
-                            src={JobSeekerMainLogo}
-                            alt="JobSeeker Main Logo"
+                            src={AdminMainLogo}
+                            alt="Admin Main Logo"
                             width={88}
                             height={50}
                             className="object-contain"

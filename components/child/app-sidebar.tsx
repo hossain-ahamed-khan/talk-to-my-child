@@ -33,7 +33,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import JobSeekerMainLogo from "@/public/images/login/logo.png";
+import ChildMainLogo from "@/public/images/main-logo.png";
 
 // Reusable nav item with tooltip support in collapsed state
 function NavItem({
@@ -128,16 +128,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div className="flex items-center justify-center">
                     {isCollapsed ? (
                         <Image
-                            src={JobSeekerMainLogo}
-                            alt="JobSeeker Main Logo"
+                            src={ChildMainLogo}
+                            alt="Child Main Logo"
                             width={32}
                             height={32}
                             className="object-contain"
                         />
                     ) : (
                         <Image
-                            src={JobSeekerMainLogo}
-                            alt="JobSeeker Main Logo"
+                            src={ChildMainLogo}
+                            alt="Child Main Logo"
                             width={88}
                             height={50}
                             className="object-contain"
