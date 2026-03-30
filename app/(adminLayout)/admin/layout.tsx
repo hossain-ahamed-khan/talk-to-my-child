@@ -36,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <SidebarProvider>
             <AppSidebar />
-            <SidebarInset>
+            <SidebarInset style={{ background: "#0f172a" }}>
                 <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
                     <SidebarTrigger className="-ml-1" />
                     <Separator
@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </BreadcrumbList>
                     </Breadcrumb>
                 </header>
-                <main className="flex-1 w-full">
+                <main className="flex-1 w-full" style={{ background: "#0f172a" }}>
                     {children}
                 </main>
             </SidebarInset>

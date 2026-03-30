@@ -125,9 +125,9 @@ export default function JobBoard() {
     const recent = JOBS.slice(0, 4);
 
     return (
-        <div style={{ minHeight: "100vh", background: "#F9FAFB", fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#0f172a", fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
 
-            <div className="text-[#5c4e4e] bg-[#F9FAFB] px-8">
+            <div className="text-[#5c4e4e] bg-[#0f172a] px-8">
                 <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && setSearched(true)}
                     placeholder="Search Job title, keywords, or company"
                     style={{ width: "80%", marginTop: 20, paddingLeft: 42, paddingRight: 16, paddingTop: 18, paddingBottom: 18, borderRadius: 13, border: "none", fontSize: 14, background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }} />
