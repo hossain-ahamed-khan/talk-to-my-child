@@ -8,7 +8,6 @@ import {
     Settings,
     Zap,
 } from "lucide-react";
-
 import { usePathname } from "next/navigation";
 import {
     Sidebar,
@@ -22,8 +21,9 @@ import {
     SidebarFooter,
     useSidebar,
 } from "@/components/ui/sidebar";
-
 import Link from "next/link";
+import mainLogo from "@/public/images/main-logo.png";
+import Image from "next/image";
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -79,21 +79,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         >
             {/* Header: Logo + App Name */}
             <SidebarHeader className="px-4 py-4">
-                <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-                    {/* App icon - teal chat bubble */}
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
-                                fill="white" />
-                        </svg>
+                <div className="w-full">
+                    <div className="w-full overflow-hidden">
+                        <Image
+                            src={mainLogo}
+                            alt="TalkToMyChild logo"
+                            className="h-auto w-full object-contain"
+                            priority
+                        />
                     </div>
-                    {!isCollapsed && (
-                        <div>
-                            <div className="text-white font-bold text-[15px] leading-tight">TalkToMyChild</div>
-                            <div className="text-[#4ade80] text-[11px] font-medium">AI Parent Support</div>
-                        </div>
-                    )}
                 </div>
             </SidebarHeader>
 
@@ -101,7 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarContent className="px-2">
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu className="space-y-1">
+                        <SidebarMenu className="space-y-2">
                             {data.nav.map((item) => (
                                 <NavItem
                                     key={item.title}
