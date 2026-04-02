@@ -1,249 +1,492 @@
 "use client";
+import { useState } from "react";
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    BarChart,
+    Bar,
+    ResponsiveContainer,
+} from "recharts";
 
+// ── Types ──────────────────────────────────────────────────────────────────
+interface StatCardProps {
+    icon: React.ReactNode;
+    growth: string;
+    growthPositive?: boolean;
+    label: string;
+    value: React.ReactNode;
+    sub?: React.ReactNode;
+    link?: string;
+}
 
-import { useState, useMemo } from "react";
-
-const JOBS = [
-    { id: 1, title: "Software Engineer", company: "Google", initial: "G", color: "#4f63e7", location: "Remote", ago: "2 days ago", type: "Remote", min: 120, max: 160, featured: true, new: false },
-    { id: 2, title: "Product Manager", company: "Meta", initial: "M", color: "#e8457a", location: "New York, NY", ago: "1 day ago", type: "Full-time", min: 130, max: 170, featured: true, new: true },
-    { id: 3, title: "UX Designer", company: "Apple", initial: "A", color: "#1a1a2e", location: "San Francisco, CA", ago: "3 hours ago", type: "Full-time", min: 110, max: 150, featured: true, new: true },
-    { id: 4, title: "Data Scientist", company: "Netflix", initial: "N", color: "#e50914", location: "Remote", ago: "5 hours ago", type: "Remote", min: 140, max: 190, featured: true, new: false },
-    { id: 5, title: "Backend Engineer", company: "Stripe", initial: "S", color: "#635bff", location: "Austin, TX", ago: "1 day ago", type: "Full-time", min: 125, max: 165, featured: false, new: false },
-    { id: 6, title: "Frontend Developer", company: "Airbnb", initial: "A", color: "#ff5a5f", location: "Remote", ago: "2 days ago", type: "Remote", min: 100, max: 140, featured: false, new: false },
-    { id: 7, title: "DevOps Engineer", company: "AWS", initial: "A", color: "#ff9900", location: "Seattle, WA", ago: "4 hours ago", type: "Full-time", min: 130, max: 175, featured: false, new: true },
-    { id: 8, title: "Product Designer", company: "Figma", initial: "F", color: "#0acf83", location: "San Francisco, CA", ago: "6 hours ago", type: "Full-time", min: 115, max: 155, featured: false, new: false },
-    { id: 9, title: "ML Engineer", company: "OpenAI", initial: "O", color: "#10a37f", location: "Remote", ago: "1 day ago", type: "Remote", min: 160, max: 220, featured: false, new: true },
-    { id: 10, title: "Marketing Intern", company: "Spotify", initial: "S", color: "#1db954", location: "New York, NY", ago: "3 days ago", type: "Internship", min: 25, max: 35, featured: false, new: false },
-    { id: 11, title: "Part-time Writer", company: "Medium", initial: "M", color: "#292929", location: "Remote", ago: "2 days ago", type: "Part-time", min: 40, max: 65, featured: false, new: false },
-    { id: 12, title: "iOS Developer", company: "Twitter", initial: "T", color: "#1da1f2", location: "San Francisco, CA", ago: "5 days ago", type: "Full-time", min: 120, max: 160, featured: false, new: false },
-];
-
-const FILTERS = ["All Jobs", "Full-time", "Part-time", "Remote", "Internship"];
-
-const typeStyle = {
-    Remote: { bg: "#ecfdf5", color: "#15803d", border: "#bbf7d0" },
-    "Full-time": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-    "Part-time": { bg: "#fefce8", color: "#a16207", border: "#fde68a" },
-    Internship: { bg: "#f5f3ff", color: "#6d28d9", border: "#ddd6fe" },
+// ── Palette / tokens ───────────────────────────────────────────────────────
+const colors = {
+    bg: "#0d1117",
+    card: "#161b27",
+    cardBorder: "#1e2736",
+    text: "#e2e8f0",
+    muted: "#8892a4",
+    accent: "#3b82f6",
+    green: "#22c55e",
+    gold: "#f59e0b",
+    silver: "#94a3b8",
+    bronze: "#f97316",
+    purple: "#818cf8",
+    red: "#ef4444",
 };
 
-function JobCard({ job, onBookmark }: { job: typeof JOBS[0]; onBookmark: (id: number) => void }) {
-    const [bookmarked, setBookmarked] = useState(false);
-    const ts = typeStyle[job.type as keyof typeof typeStyle] || typeStyle["Full-time"];
-    const salary = job.min < 100 ? `$${job.min}–$${job.max}/hr` : `$${job.min}k – $${job.max}k`;
+// ── Mock data ──────────────────────────────────────────────────────────────
+const callVolumeData = [
+    { day: "Mon", calls: 1200 },
+    { day: "Tue", calls: 1950 },
+    { day: "Wed", calls: 1700 },
+    { day: "Thu", calls: 2400 },
+    { day: "Fri", calls: 2100 },
+    { day: "Sat", calls: 3200 },
+    { day: "Sun", calls: 2900 },
+];
+
+const charactersData = [
+    { name: "Santa", count: 4300 },
+    { name: "Teacher", count: 3100 },
+    { name: "Doctor", count: 2100 },
+    { name: "Custom\nCharacter", count: 1700 },
+];
+
+const characterColors = ["#3b82f6", "#22c55e", "#818cf8", "#f59e0b"];
+
+// ── Icons (inline SVG) ─────────────────────────────────────────────────────
+const UsersIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="1.8">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+const DollarIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="1.8">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v12M9 9.5C9 8.1 10.3 7 12 7s3 1.1 3 2.5-1.3 2.5-3 2.5-3 1.1-3 2.5S10.3 17 12 17s3-1.1 3-2.5" />
+    </svg>
+);
+const ReferralIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="1.8">
+        <path d="M16 3h5v5M4 20L20.2 3.8" />
+        <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+    </svg>
+);
+const ChildIcon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="1.8">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M8 16c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+        <circle cx="18" cy="6" r="2" />
+        <path d="M16 10c0-1.1.9-2 2-2" />
+    </svg>
+);
+const UpArrow = ({ color = colors.green }: { color?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5">
+        <polyline points="18 15 12 9 6 15" />
+    </svg>
+);
+const DownloadIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+    </svg>
+);
+const ChevronDown = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="6 9 12 15 18 9" />
+    </svg>
+);
+
+// ── Sub-components ─────────────────────────────────────────────────────────
+function StatCard({ icon, growth, growthPositive = true, label, value, sub, link }: StatCardProps) {
+    return (
+        <div style={{
+            background: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
+            borderRadius: 14,
+            padding: "22px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            flex: 1,
+            minWidth: 200,
+        }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {icon}
+                <span style={{ color: growthPositive ? colors.green : colors.red, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", gap: 3 }}>
+                    <UpArrow color={growthPositive ? colors.green : colors.red} />
+                    {growth}
+                </span>
+            </div>
+            <div style={{ color: colors.muted, fontSize: 13 }}>{label}</div>
+            <div style={{ color: colors.text, fontSize: 26, fontWeight: 700, lineHeight: 1.2 }}>{value}</div>
+            {sub && <div style={{ color: colors.muted, fontSize: 12 }}>{sub}</div>}
+            {link && (
+                <>
+                    <hr style={{ border: "none", borderTop: `1px solid ${colors.cardBorder}`, margin: "4px 0" }} />
+                    <a href="#" style={{ color: colors.muted, fontSize: 13, textDecoration: "none" }}>{link}</a>
+                </>
+            )}
+        </div>
+    );
+}
+
+function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+    return (
+        <div style={{ background: "#1e2736", borderRadius: 99, height: 8, width: "100%", overflow: "hidden" }}>
+            <div style={{ background: color, height: "100%", width: `${(value / max) * 100}%`, borderRadius: 99, transition: "width 0.6s ease" }} />
+        </div>
+    );
+}
+
+function Avatar({ initials, color, size = 32 }: { initials: string; color: string; size?: number }) {
+    return (
+        <div style={{
+            width: size, height: size, borderRadius: "50%", background: color,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontSize: size * 0.38, fontWeight: 700, flexShrink: 0
+        }}>
+            {initials}
+        </div>
+    );
+}
+
+function CharacterCircle({ label }: { label: string }) {
+    return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "#1e2736", border: `2px solid ${colors.cardBorder}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
+            }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="1.5">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+            </div>
+            <span style={{ color: colors.muted, fontSize: 12 }}>{label}</span>
+        </div>
+    );
+}
+
+function PlusCircle() {
+    return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "#1e2736", border: `2px dashed ${colors.cardBorder}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+            </div>
+            <span style={{ color: colors.muted, fontSize: 12 }}>Create New</span>
+        </div>
+    );
+}
+
+// Custom bar shape with rounded tops
+const RoundedBar = (props: any) => {
+    const { x, y, width, height, fill } = props;
+    const r = 5;
+    return (
+        <path
+            d={`M${x},${y + height} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} Z`}
+            fill={fill}
+        />
+    );
+};
+
+// ── Main Dashboard ─────────────────────────────────────────────────────────
+export default function AnalyticsDashboard() {
+    const [timeRange] = useState("Last 30 Days");
+    const [callRange] = useState("Last 7 Days");
+
+    const cardStyle: React.CSSProperties = {
+        background: colors.card,
+        border: `1px solid ${colors.cardBorder}`,
+        borderRadius: 14,
+        padding: "24px",
+    };
 
     return (
         <div style={{
-            background: "#fff",
-            borderRadius: 18,
-            border: "1px solid #eef0f6",
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-            cursor: "pointer",
-            transition: "box-shadow 0.2s, transform 0.2s",
-            position: "relative",
-        }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 24px rgba(79,99,231,0.12)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
-        >
-            {job.new && (
-                <span style={{ position: "absolute", top: 14, right: 42, fontSize: 10, fontWeight: 700, background: "#fef9c3", color: "#a16207", padding: "2px 8px", borderRadius: 99 }}>NEW</span>
-            )}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: job.color, color: "#fff", fontWeight: 800, fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {job.initial}
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 650, fontSize: 14, color: "#111827", lineHeight: 1.3 }}>{job.title}</div>
-                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>⊞ {job.company}</div>
-                    </div>
+            background: colors.bg,
+            minHeight: "100vh",
+            fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+            color: colors.text,
+            padding: "32px 36px",
+        }}>
+            {/* ── Header ── */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: colors.text }}>Analytics Overview</h1>
+                    <p style={{ margin: "6px 0 0", color: colors.muted, fontSize: 14 }}>Monitor your platform&apos;s health and growth metrics.</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setBookmarked(b => !b); onBookmark(job.id); }}
-                    style={{ background: bookmarked ? "#eff2ff" : "transparent", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: bookmarked ? "#4f63e7" : "#d1d5db", transition: "all 0.15s" }}>
-                    <svg width="16" height="16" fill={bookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-                    </svg>
-                </button>
-            </div>
-
-            <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#6b7280" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                    {job.location}
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                    {job.ago}
-                </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, background: ts.bg, color: ts.color, border: `1px solid ${ts.border}`, padding: "3px 10px", borderRadius: 99 }}>{job.type}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{salary}</span>
+                <div style={{ display: "flex", gap: 12 }}>
+                    <button style={{
+                        background: "#fff", color: "#0d1117", border: "none", borderRadius: 8,
+                        padding: "10px 16px", display: "flex", alignItems: "center", gap: 8,
+                        fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}>
+                        {timeRange} <ChevronDown />
+                    </button>
+                    <button style={{
+                        background: "transparent", color: colors.text,
+                        border: `1px solid ${colors.cardBorder}`, borderRadius: 8,
+                        padding: "10px 16px", display: "flex", alignItems: "center", gap: 8,
+                        fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}>
+                        <DownloadIcon /> Export Report
+                    </button>
                 </div>
-                <button style={{ background: "#4f63e7", color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "background 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#3b50d6"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#4f63e7"}>
-                    Apply Now
-                </button>
             </div>
-        </div>
-    );
-}
 
-function SectionHeader({ title, count }: any) {
-    return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 750, color: "#111827" }}>{title}</h2>
-            <button style={{ background: "none", border: "none", color: "#4f63e7", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>View all</button>
-        </div>
-    );
-}
-
-export default function JobBoard() {
-    const [search, setSearch] = useState("");
-    const [location, setLocation] = useState("");
-    const [filter, setFilter] = useState("All Jobs");
-    const [bookmarks, setBookmarks] = useState(new Set());
-    const [searched, setSearched] = useState(false);
-
-    const toggleBookmark = (id: any) => setBookmarks(b => { const n = new Set(b); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
-    const filtered = useMemo(() => JOBS.filter(j => {
-        const byType = filter === "All Jobs" || j.type === filter;
-        const bySearch = !searched || !search || j.title.toLowerCase().includes(search.toLowerCase()) || j.company.toLowerCase().includes(search.toLowerCase());
-        const byLoc = !searched || !location || j.location.toLowerCase().includes(location.toLowerCase());
-        return byType && bySearch && byLoc;
-    }), [filter, search, location, searched]);
-
-    const featured = filtered.filter(j => j.featured);
-    const recent = JOBS.slice(0, 4);
-
-    return (
-        <div style={{ minHeight: "100vh", background: "#0f172a", fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
-
-            <div className="text-[#5c4e4e] bg-[#0f172a] px-8">
-                <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && setSearched(true)}
-                    placeholder="Search Job title, keywords, or company"
-                    style={{ width: "80%", marginTop: 20, paddingLeft: 42, paddingRight: 16, paddingTop: 18, paddingBottom: 18, borderRadius: 13, border: "none", fontSize: 14, background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }} />
+            {/* ── Stat Cards Row ── */}
+            <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
+                <StatCard
+                    icon={<UsersIcon />}
+                    growth="8.4%"
+                    label="Total Subscribers"
+                    value="12,450"
+                    sub={
+                        <span>
+                            <span style={{ color: colors.accent }}>●</span> App Store: 230&nbsp;&nbsp;
+                            <span style={{ color: colors.green }}>●</span> Play Store: 220
+                        </span>
+                    }
+                    link="View All Subscribers"
+                />
+                <StatCard
+                    icon={<DollarIcon />}
+                    growth="15.2%"
+                    label="Total Revenue (YTD)"
+                    value="$142,500"
+                    sub={
+                        <span style={{ fontSize: 12 }}>
+                            W: $4.2K&nbsp;&nbsp;M: $18.5K<br />Q: $52.1K&nbsp;&nbsp;Y: $142.5K
+                        </span>
+                    }
+                    link="View Detailed Revenue"
+                />
+                <StatCard
+                    icon={<ReferralIcon />}
+                    growth="12%"
+                    label="Total Referrals"
+                    value="4,684"
+                    link="View Referrals"
+                />
+                <StatCard
+                    icon={<ChildIcon />}
+                    growth="12%"
+                    label="Parent/Child Accounts"
+                    value={<>1,847 Parents /<br />3,120 Children</>}
+                    link="User Management"
+                />
             </div>
-            <main style={{ margin: "0 auto", padding: "24px 24px 48px" }}>
-                {/* Hero */}
-                <div style={{ borderRadius: 22, background: "linear-gradient(135deg, #3b4fd8 0%, #4f63e7 55%, #6b5ce7 100%)", padding: "48px 48px 44px", position: "relative", overflow: "hidden", marginBottom: 24 }}>
-                    <div style={{ position: "absolute", top: -40, right: -40, width: 240, height: 240, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-                    <div style={{ position: "absolute", top: 30, right: 100, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
-                    <div style={{ position: "absolute", bottom: -20, right: 0, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-                    <h1 className="hero-title" style={{ fontFamily: "Sora, sans-serif", fontSize: 36, fontWeight: 800, color: "#fff", margin: "0 0 8px", lineHeight: 1.2 }}>Find Your Dream Job</h1>
-                    <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 15, margin: "0 0 28px" }}>Discover opportunities that match your skills and aspirations</p>
-                    <div className="hero-inputs" style={{ display: "flex", gap: 12 }}>
-                        <div style={{ flex: 1, position: "relative" }}>
-                            <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
-                            <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && setSearched(true)}
-                                placeholder="Job title, keywords, or company"
-                                style={{ width: "100%", paddingLeft: 42, paddingRight: 16, paddingTop: 14, paddingBottom: 14, borderRadius: 13, border: "none", fontSize: 14, color: "#111827", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }} />
-                        </div>
-                        <div style={{ flex: 1, position: "relative" }}>
-                            <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                            <input value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => e.key === "Enter" && setSearched(true)}
-                                placeholder="City, state, or remote"
-                                style={{ width: "100%", paddingLeft: 42, paddingRight: 16, paddingTop: 14, paddingBottom: 14, borderRadius: 13, border: "none", fontSize: 14, color: "#111827", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }} />
-                        </div>
-                        <button onClick={() => setSearched(true)}
-                            style={{ background: "#fff", color: "#4f63e7", border: "none", borderRadius: 13, padding: "14px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                            Search Jobs
+
+            {/* ── Charts Row ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 20 }}>
+                {/* Weekly Call Volume */}
+                <div style={cardStyle}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Weekly Call Volume</h2>
+                        <button style={{
+                            background: "transparent", border: `1px solid ${colors.cardBorder}`,
+                            color: colors.text, borderRadius: 8, padding: "6px 12px",
+                            fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                        }}>
+                            {callRange} <ChevronDown />
                         </button>
                     </div>
+                    <div style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginBottom: 4 }}>Call Volume per Day</div>
+                    <ResponsiveContainer width="100%" height={260}>
+                        <LineChart data={callVolumeData} margin={{ top: 8, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid stroke="#1e2736" strokeDasharray="0" vertical={false} />
+                            <XAxis dataKey="day" tick={{ fill: colors.muted, fontSize: 12 }} axisLine={false} tickLine={false}
+                                label={{ value: "Day of Week", position: "insideBottom", offset: -4, fill: colors.muted, fontSize: 12 }} />
+                            <YAxis tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false}
+                                label={{ value: "Number of Calls", angle: -90, position: "insideLeft", offset: 14, fill: colors.muted, fontSize: 11 }}
+                                domain={[0, 3500]} ticks={[0, 500, 1000, 1500, 2000, 2500, 3000, 3500]} />
+                            <Tooltip contentStyle={{ background: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 8, color: colors.text }} />
+                            <Line type="monotone" dataKey="calls" stroke={colors.accent} strokeWidth={2.5} dot={{ fill: colors.accent, r: 4, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
 
-                {/* Stats */}
-                <div className="stats-bar" style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 14, color: "#4b5563", marginBottom: 20 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
-                        <strong style={{ color: "#111827" }}>2,847</strong> jobs available today
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-                        <strong style={{ color: "#111827" }}>156</strong> new this week
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                        Updated <strong style={{ color: "#111827" }}>5 min</strong> ago
-                    </span>
+                {/* Most Popular Characters */}
+                <div style={cardStyle}>
+                    <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700 }}>Most Popular Characters</h2>
+                    <div style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginBottom: 4 }}>Interaction Count by Character</div>
+                    <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={charactersData} margin={{ top: 8, right: 10, left: -10, bottom: 30 }}>
+                            <CartesianGrid stroke="#1e2736" strokeDasharray="0" horizontal={true} vertical={false} />
+                            <XAxis dataKey="name" tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false}
+                                label={{ value: "Character Type", position: "insideBottom", offset: -18, fill: colors.muted, fontSize: 12 }} />
+                            <YAxis tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false}
+                                label={{ value: "Interactions", angle: -90, position: "insideLeft", offset: 14, fill: colors.muted, fontSize: 11 }}
+                                domain={[0, 4500]} ticks={[0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500]} />
+                            <Tooltip contentStyle={{ background: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 8, color: colors.text }} />
+                            <Bar dataKey="count" shape={(props: any) => <RoundedBar {...props} fill={characterColors[props.index % characterColors.length]} />} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
+            </div>
 
-                {/* Filter tabs */}
-                <div className="filter-scroll" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
-                    {FILTERS.map(f => (
-                        <button key={f} onClick={() => setFilter(f)}
-                            style={{ padding: "8px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, border: filter === f ? "1px solid #4f63e7" : "1px solid #e5e7eb", background: filter === f ? "#4f63e7" : "#fff", color: filter === f ? "#fff" : "#374151", cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-                            {f}
-                        </button>
+            {/* ── Bottom Row ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {/* Subscriber Tiers */}
+                <div style={cardStyle}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Subscriber Tiers</h2>
+                        <a href="#" style={{ color: colors.muted, fontSize: 13, textDecoration: "none" }}>View Tiers</a>
+                    </div>
+
+                    {[
+                        { label: "Gold Members", count: 1420, color: colors.gold, max: 3000 },
+                        { label: "Silver Members", count: 2100, color: colors.silver, max: 3000 },
+                        { label: "Bronze Members", count: 700, color: colors.bronze, max: 3000 },
+                    ].map((tier) => (
+                        <div key={tier.label} style={{ marginBottom: 18 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                                <span style={{ color: tier.color, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: tier.color, display: "inline-block" }} />
+                                    {tier.label}
+                                </span>
+                                <span style={{ color: colors.text, fontWeight: 600, fontSize: 14 }}>{tier.count.toLocaleString()}</span>
+                            </div>
+                            <ProgressBar value={tier.count} max={tier.max} color={tier.color} />
+                        </div>
                     ))}
-                    {(searched && (search || location)) && (
-                        <button onClick={() => { setSearch(""); setLocation(""); setSearched(false); setFilter("All Jobs"); }}
-                            style={{ padding: "8px 18px", borderRadius: 99, fontSize: 13, fontWeight: 600, border: "1px solid #fca5a5", background: "#fef2f2", color: "#dc2626", cursor: "pointer" }}>
-                            ✕ Clear search
-                        </button>
-                    )}
+
+                    <div style={{
+                        background: "#1a2540",
+                        border: `1px solid #2a3a5a`,
+                        borderRadius: 10, padding: "14px 16px",
+                        color: colors.accent, fontSize: 13, marginTop: 8,
+                        display: "flex", alignItems: "flex-start", gap: 10,
+                    }}>
+                        <span style={{ marginTop: 1 }}>ℹ</span>
+                        <span>Subscriber conversion rate has improved by 4.2% since the introduction of the Gold tier benefits.</span>
+                    </div>
+
+                    {/* Avatars overlay */}
+                    <div style={{ display: "flex", marginTop: 16, alignItems: "center" }}>
+                        <div style={{ display: "flex" }}>
+                            {[{ i: "M", c: "#6366f1" }, { i: "J", c: "#22c55e" }].map((a, idx) => (
+                                <div key={idx} style={{ marginLeft: idx === 0 ? 0 : -10, zIndex: 2 - idx }}>
+                                    <Avatar initials={a.i} color={a.c} size={30} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                {searched && (search || location) ? (
-                    <section style={{ marginBottom: 40 }}>
-                        <SectionHeader title={`Search Results (${filtered.length})`} />
-                        {filtered.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280" }}>
-                                <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-                                <div style={{ fontWeight: 600, color: "#374151", marginBottom: 4 }}>No jobs found</div>
-                                <div style={{ fontSize: 13 }}>Try different keywords or location</div>
-                            </div>
-                        ) : (
-                            <div className="grid4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                                {filtered.map(j => <JobCard key={j.id} job={j} onBookmark={toggleBookmark} />)}
-                            </div>
-                        )}
-                    </section>
-                ) : (
-                    <>
-                        {/* Featured */}
-                        <section style={{ marginBottom: 40 }}>
-                            <SectionHeader title="Featured Jobs" />
-                            <div className="grid4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                                {featured.map(j => <JobCard key={j.id} job={j} onBookmark={toggleBookmark} />)}
-                            </div>
-                        </section>
+                {/* Real-time Activity Summary + All Characters stacked */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* Real-time Activity */}
+                    <div style={cardStyle}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Real-time Activity Summary</h2>
+                            <span style={{
+                                background: "#0f2e1a", color: colors.green, border: `1px solid ${colors.green}`,
+                                borderRadius: 99, padding: "4px 12px", fontSize: 12, fontWeight: 600,
+                                display: "flex", alignItems: "center", gap: 6,
+                            }}>
+                                <span style={{ width: 7, height: 7, borderRadius: "50%", background: colors.green, display: "inline-block" }} />
+                                Live Updates
+                            </span>
+                        </div>
 
-                        {/* Recently Viewed */}
-                        <section style={{ marginBottom: 40 }}>
-                            <SectionHeader title="Recently Viewed" />
-                            <div className="grid4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                                {recent.map(j => <JobCard key={`rv-${j.id}`} job={j} onBookmark={toggleBookmark} />)}
-                            </div>
-                        </section>
+                        <div style={{ textAlign: "center", marginBottom: 16 }}>
+                            <div style={{ fontSize: 44, fontWeight: 800, color: colors.text }}>1,284</div>
+                            <div style={{ color: colors.muted, fontSize: 12, letterSpacing: 1 }}>TOTAL ACTIVE USERS</div>
+                        </div>
 
-                        {/* All Jobs */}
-                        {filter !== "All Jobs" && (
-                            <section style={{ marginBottom: 40 }}>
-                                <SectionHeader title={`${filter} Jobs (${filtered.length})`} />
-                                {filtered.length === 0 ? (
-                                    <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280" }}>
-                                        <div style={{ fontSize: 40, marginBottom: 12 }}>🗂️</div>
-                                        <div style={{ fontWeight: 600, color: "#374151" }}>No {filter} jobs found</div>
+                        <hr style={{ border: "none", borderTop: `1px solid ${colors.cardBorder}`, marginBottom: 16 }} />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                            {/* Platform Distribution */}
+                            <div style={{ background: "#1a2030", borderRadius: 10, padding: "14px 16px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                                    <span style={{ color: colors.muted, fontSize: 11, fontWeight: 600, letterSpacing: 0.5 }}>PLATFORM<br />DISTRIBUTION</span>
+                                    <span style={{ color: colors.muted, fontSize: 11 }}>By<br />Device</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 20, marginBottom: 10 }}>
+                                    <div>
+                                        <div style={{ fontSize: 22, fontWeight: 700 }}>742</div>
+                                        <div style={{ color: colors.muted, fontSize: 11 }}>iOS Users</div>
                                     </div>
-                                ) : (
-                                    <div className="grid4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                                        {filtered.map(j => <JobCard key={`f-${j.id}`} job={j} onBookmark={toggleBookmark} />)}
+                                    <div>
+                                        <div style={{ fontSize: 22, fontWeight: 700 }}>542</div>
+                                        <div style={{ color: colors.muted, fontSize: 11 }}>Android Users</div>
                                     </div>
-                                )}
-                            </section>
-                        )}
-                    </>
-                )}
-            </main>
+                                </div>
+                                <div style={{ background: "#1e2736", borderRadius: 99, height: 6, overflow: "hidden" }}>
+                                    <div style={{ display: "flex", height: "100%" }}>
+                                        <div style={{ background: colors.accent, width: `${(742 / 1284) * 100}%` }} />
+                                        <div style={{ background: colors.green, flex: 1 }} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* User Type */}
+                            <div style={{ background: "#1a2030", borderRadius: 10, padding: "14px 16px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                                    <span style={{ color: colors.muted, fontSize: 11, fontWeight: 600, letterSpacing: 0.5 }}>USER TYPE<br />BREAKDOWN</span>
+                                    <span style={{ color: colors.muted, fontSize: 11 }}>By<br />Role</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 20, marginBottom: 10 }}>
+                                    <div>
+                                        <div style={{ fontSize: 22, fontWeight: 700 }}>412</div>
+                                        <div style={{ color: colors.muted, fontSize: 11 }}>Parents</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 22, fontWeight: 700 }}>872</div>
+                                        <div style={{ color: colors.muted, fontSize: 11 }}>Children</div>
+                                    </div>
+                                </div>
+                                <div style={{ background: "#1e2736", borderRadius: 99, height: 6, overflow: "hidden" }}>
+                                    <div style={{ display: "flex", height: "100%" }}>
+                                        <div style={{ background: colors.purple, width: `${(412 / 1284) * 100}%` }} />
+                                        <div style={{ background: colors.bronze, flex: 1 }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button style={{
+                            width: "100%", background: colors.red, color: "#fff", border: "none",
+                            borderRadius: 8, padding: "13px", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                        }}>
+                            Detailed Activity Logs
+                        </button>
+                    </div>
+
+                    {/* All Characters */}
+                    <div style={cardStyle}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>All Characters</h2>
+                            <a href="#" style={{ color: colors.muted, fontSize: 13, textDecoration: "none" }}>View All</a>
+                        </div>
+                        <div style={{ display: "flex", gap: 20 }}>
+                            {["Dr. Sarah", "Dr. Sarah", "Dr. Sarah"].map((name, i) => (
+                                <CharacterCircle key={i} label={name} />
+                            ))}
+                            <PlusCircle />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
