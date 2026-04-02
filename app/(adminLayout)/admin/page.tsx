@@ -195,8 +195,16 @@ function PlusCircle() {
 }
 
 // Custom bar shape with rounded tops
-const RoundedBar = (props: any) => {
-    const { x, y, width, height, fill } = props;
+type RoundedBarShapeProps = {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    fill?: string;
+    index?: number;
+};
+
+const RoundedBar = ({ x = 0, y = 0, width = 0, height = 0, fill = colors.accent }: RoundedBarShapeProps) => {
     const r = 5;
     return (
         <path
@@ -336,7 +344,13 @@ export default function AnalyticsDashboard() {
                                 label={{ value: "Interactions", angle: -90, position: "insideLeft", offset: 14, fill: colors.muted, fontSize: 11 }}
                                 domain={[0, 4500]} ticks={[0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500]} />
                             <Tooltip contentStyle={{ background: colors.card, border: `1px solid ${colors.cardBorder}`, borderRadius: 8, color: colors.text }} />
-                            <Bar dataKey="count" shape={(props: any) => <RoundedBar {...props} fill={characterColors[props.index % characterColors.length]} />} />
+                            <Bar
+                                dataKey="count"
+                                shape={(props) => {
+                                    const index = typeof props.index === "number" ? props.index : 0;
+                                    return <RoundedBar {...(props as RoundedBarShapeProps)} fill={characterColors[index % characterColors.length]} />;
+                                }}
+                            />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

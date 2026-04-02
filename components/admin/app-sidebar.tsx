@@ -89,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             collapsible="icon"
             {...props}
             className="border-r-0"
-            style={{ background: "#05163a" } as React.CSSProperties}
+            style={{ background: "#0f172a" } as React.CSSProperties}
         >
             {/* Header: Logo + App Name */}
             <SidebarHeader className="px-4 py-4">
