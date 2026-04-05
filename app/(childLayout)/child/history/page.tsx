@@ -59,7 +59,7 @@ const ClockIcon = () => (
 
 const ChevronRight = () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M6 4l4 4-4 4" stroke="#4ADE80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M6 4l4 4-4 4" stroke="#10996f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
@@ -73,7 +73,7 @@ const MicIcon = () => (
 
 const ChevronDown = () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M4 6l4 4 4-4" stroke="#4ADE80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 6l4 4 4-4" stroke="#10996f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
@@ -89,6 +89,7 @@ function CallCard({ call, index }: { call: CallRecord; index: number }) {
                 display: "flex",
                 alignItems: "center",
                 gap: "16px",
+                width: "100%",
                 cursor: "pointer",
                 transition: "background 0.2s, border-color 0.2s, transform 0.15s",
                 animation: `fadeSlideIn 0.4s ease both`,
@@ -97,7 +98,7 @@ function CallCard({ call, index }: { call: CallRecord; index: number }) {
             onMouseEnter={e => {
                 const el = e.currentTarget as HTMLDivElement;
                 el.style.background = "rgba(255,255,255,0.07)";
-                el.style.borderColor = "rgba(74,222,128,0.2)";
+                el.style.borderColor = "rgba(16,153,111,0.4)";
                 el.style.transform = "translateX(2px)";
             }}
             onMouseLeave={e => {
@@ -114,7 +115,7 @@ function CallCard({ call, index }: { call: CallRecord; index: number }) {
                     height: 52,
                     borderRadius: "50%",
                     overflow: "hidden",
-                    border: "2px solid rgba(74,222,128,0.3)",
+                    border: "2px solid rgba(16,153,111,0.45)",
                 }}>
                     <Image
                         src={call.contactImage}
@@ -139,21 +140,21 @@ function CallCard({ call, index }: { call: CallRecord; index: number }) {
                         {call.contactName}
                     </span>
                     <span style={{
-                        background: "rgba(74,222,128,0.15)",
-                        color: "#4ADE80",
+                        background: "rgba(16,153,111,0.18)",
+                        color: "#10996f",
                         fontFamily: "'DM Mono', monospace",
                         fontSize: "10px",
                         fontWeight: 600,
                         letterSpacing: "0.08em",
                         padding: "2px 8px",
                         borderRadius: "20px",
-                        border: "1px solid rgba(74,222,128,0.25)",
+                        border: "1px solid rgba(16,153,111,0.35)",
                     }}>
                         {call.duration}
                     </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+                <div className="call-meta" style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                         <CalendarIcon />
                         <span style={{
@@ -213,15 +214,28 @@ export default function CallHistory() {
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@500;600&display=swap');
 
+                :root {
+                    --primary: #10996f;
+                    --primary-soft: rgba(16,153,111,0.35);
+                    --primary-pulse: rgba(16,153,111,0.45);
+                    --page-bg: #0B1A24;
+                }
+
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes pulse-mic {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
-          50% { box-shadow: 0 0 0 10px rgba(74,222,128,0); }
+                    0%, 100% { box-shadow: 0 0 0 0 var(--primary-pulse); }
+                    50% { box-shadow: 0 0 0 10px rgba(16,153,111,0); }
         }
+
+                .history-page {
+                    width: 100%;
+                    min-height: 100vh;
+                    box-sizing: border-box;
+                }
 
         .mic-btn {
           animation: pulse-mic 2.5s ease-in-out infinite;
@@ -233,19 +247,67 @@ export default function CallHistory() {
 
         .load-more-btn:hover {
           background: rgba(255,255,255,0.05) !important;
-          border-color: rgba(74,222,128,0.3) !important;
+                    border-color: var(--primary-soft) !important;
+                }
+
+                @media (max-width: 1024px) {
+                    .history-page {
+                        padding: 32px 20px !important;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .history-page {
+                        padding: 24px 14px !important;
+                    }
+
+                    .history-title {
+                        font-size: 24px !important;
+                    }
+
+                    .call-card {
+                        padding: 14px !important;
+                        gap: 12px !important;
+                    }
+
+                    .call-meta {
+                        flex-wrap: wrap;
+                        row-gap: 6px;
+                    }
+
+                    .mic-btn {
+                        width: 50px !important;
+                        height: 50px !important;
+                        right: 14px !important;
+                        bottom: 14px !important;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    .history-page {
+                        padding: 20px 10px !important;
+                    }
+
+                    .history-title {
+                        font-size: 21px !important;
+                    }
+
+                    .call-card {
+                        padding: 12px !important;
+                        border-radius: 12px !important;
+                    }
         }
       `}</style>
 
             <div style={{
+                width: "100%",
                 minHeight: "100vh",
-                background: "#0B1A24",
+                background: "var(--page-bg)",
                 fontFamily: "'DM Sans', sans-serif",
                 padding: "40px 24px",
                 position: "relative",
-                maxWidth: 700,
-                margin: "0 auto",
-            }}>
+                boxSizing: "border-box",
+            }} className="history-page">
                 {/* Header */}
                 <div style={{ marginBottom: 32, animation: "fadeSlideIn 0.4s ease both" }}>
                     <h1 style={{
@@ -255,11 +317,11 @@ export default function CallHistory() {
                         color: "#F9FAFB",
                         margin: 0,
                         letterSpacing: "-0.03em",
-                    }}>Call History</h1>
+                    }} className="history-title">Call History</h1>
                     <p style={{
                         fontFamily: "'DM Sans', sans-serif",
                         fontSize: "14px",
-                        color: "#4ADE80",
+                        color: "#10996f",
                         margin: "6px 0 0",
                         fontWeight: 400,
                     }}>
@@ -291,7 +353,7 @@ export default function CallHistory() {
                         justifyContent: "center",
                         gap: 8,
                         cursor: loading ? "not-allowed" : "pointer",
-                        color: "#4ADE80",
+                        color: "#10996f",
                         fontFamily: "'DM Sans', sans-serif",
                         fontWeight: 600,
                         fontSize: "15px",
@@ -319,13 +381,13 @@ export default function CallHistory() {
                         width: 56,
                         height: 56,
                         borderRadius: "50%",
-                        background: "linear-gradient(135deg, #4ADE80, #22C55E)",
+                        background: "linear-gradient(135deg, #10996f, #0d7f5c)",
                         border: "none",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 4px 24px rgba(74,222,128,0.3)",
+                        boxShadow: "0 4px 24px rgba(16,153,111,0.35)",
                     }}
                 >
                     <MicIcon />

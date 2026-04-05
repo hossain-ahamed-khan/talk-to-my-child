@@ -31,19 +31,19 @@ const ClockIcon = () => (
 );
 
 const ConfigChevronRight = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="#2dd4bf" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 5l8 7-8 7" stroke="#2dd4bf" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="#11b780" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 5l8 7-8 7" stroke="#11b780" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
 const HistoryChevronRight = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#11b780" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="9 18 15 12 9 6" />
     </svg>
 );
 
 const ChevronDown = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#11b780" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="6 9 12 15 18 9" />
     </svg>
 );
@@ -120,7 +120,7 @@ const ConfigDadAvatar = () => (
             width: 22,
             height: 22,
             borderRadius: "50%",
-            background: "#2dd4bf",
+            background: "#11b780",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -162,6 +162,7 @@ const moreCalls: Call[] = [
 function CallRow({ call, onClick }: { call: Call; onClick: () => void }) {
     return (
         <div
+            className="history-call-row"
             style={{
                 background: "#0d1e2d",
                 border: "1px solid #1a3348",
@@ -175,7 +176,7 @@ function CallRow({ call, onClick }: { call: Call; onClick: () => void }) {
             }}
             onClick={onClick}
             onMouseEnter={e => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = "#10b981";
+                (e.currentTarget as HTMLDivElement).style.borderColor = "#11b780";
                 (e.currentTarget as HTMLDivElement).style.background = "#0d2318";
             }}
             onMouseLeave={e => {
@@ -183,13 +184,13 @@ function CallRow({ call, onClick }: { call: Call; onClick: () => void }) {
                 (e.currentTarget as HTMLDivElement).style.background = "#0d1e2d";
             }}
         >
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div className="history-call-left" style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 <HistoryDadAvatar />
                 <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                    <div className="history-call-head" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                         <span style={{ fontWeight: 700, fontSize: 16, color: "#e8f4f8" }}>{call.name}</span>
                         <span style={{
-                            background: "#10b981",
+                            background: "#11b780",
                             color: "#091520",
                             fontSize: 9,
                             fontWeight: 800,
@@ -200,7 +201,7 @@ function CallRow({ call, onClick }: { call: Call; onClick: () => void }) {
                             {call.duration}
                         </span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+                    <div className="history-call-meta" style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#4a7a90" }}>
                             <CalendarIcon /> {call.date}
                         </span>
@@ -219,7 +220,7 @@ function CallRow({ call, onClick }: { call: Call; onClick: () => void }) {
                 </div>
             </div>
 
-            <div style={{ paddingLeft: 12 }}>
+            <div className="history-call-chevron" style={{ paddingLeft: 12 }}>
                 <HistoryChevronRight />
             </div>
         </div>
@@ -241,16 +242,58 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
         <div style={{
             background: "#091520",
             minHeight: "100vh",
-            padding: "40px 24px",
+            padding: "clamp(16px, 3vw, 40px) clamp(12px, 3vw, 24px)",
             fontFamily: "'DM Sans', sans-serif",
             position: "relative",
         }}>
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
                 * { box-sizing: border-box; }
+                .history-shell {
+                    width: 100%;
+                    margin: 0;
+                }
+                .history-call-row {
+                    width: 100%;
+                    gap: 12px;
+                }
+                .history-fab {
+                    width: 54px;
+                    height: 54px;
+                    right: clamp(12px, 2vw, 32px);
+                    bottom: clamp(12px, 2vw, 32px);
+                }
+                @media (max-width: 900px) {
+                    .history-call-row {
+                        align-items: flex-start !important;
+                    }
+                    .history-call-left {
+                        width: 100%;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .history-call-row {
+                        flex-direction: column;
+                        align-items: stretch !important;
+                    }
+                    .history-call-head {
+                        flex-wrap: wrap;
+                    }
+                    .history-call-meta {
+                        flex-wrap: wrap;
+                        row-gap: 6px;
+                    }
+                    .history-call-chevron {
+                        display: none;
+                    }
+                    .history-fab {
+                        width: 48px;
+                        height: 48px;
+                    }
+                }
             `}</style>
 
-            <div style={{ maxWidth: 940, margin: "0 auto" }}>
+            <div className="history-shell" style={{ width: "100%", margin: "0 auto" }}>
                 <div style={{ marginBottom: 28 }}>
                     <h1 style={{
                         margin: 0,
@@ -261,7 +304,7 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
                     }}>
                         Call History
                     </h1>
-                    <p style={{ margin: "6px 0 0", fontSize: 14, color: "#10b981", fontWeight: 500 }}>
+                    <p style={{ margin: "6px 0 0", fontSize: 14, color: "#11b780", fontWeight: 500 }}>
                         Review and replay your recent learning conversations.
                     </p>
                 </div>
@@ -281,7 +324,7 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
                         background: "#0d1e2d",
                         border: "1px solid #1a3348",
                         borderRadius: 14,
-                        color: loaded ? "#4a7a90" : "#10b981",
+                        color: loaded ? "#4a7a90" : "#11b780",
                         fontWeight: 700,
                         fontSize: 15,
                         fontFamily: "'DM Sans', sans-serif",
@@ -295,7 +338,7 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
                     onMouseEnter={e => {
                         if (!loaded) {
                             (e.currentTarget as HTMLButtonElement).style.background = "#0d2318";
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = "#10b981";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "#11b780";
                         }
                     }}
                     onMouseLeave={e => {
@@ -307,7 +350,7 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
                 </button>
             </div>
 
-            <button style={{
+            <button className="history-fab" style={{
                 position: "fixed",
                 bottom: 32,
                 right: 32,
@@ -315,11 +358,11 @@ function CallHistory({ onSelectCall }: { onSelectCall: (call: Call) => void }) {
                 height: 54,
                 borderRadius: "50%",
                 border: "none",
-                background: "#10b981",
+                background: "#11b780",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 6px 24px rgba(16,185,129,0.4)",
+                boxShadow: "0 6px 24px rgba(17,183,128,0.4)",
                 cursor: "pointer",
             }}>
                 <MicIcon />
@@ -371,7 +414,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
         <div style={{
             background: "#091520",
             minHeight: "100vh",
-            padding: "32px 24px",
+            padding: "clamp(16px, 3vw, 32px) clamp(12px, 3vw, 24px)",
             fontFamily: "'DM Sans', sans-serif",
         }}>
             <style>{`
@@ -379,13 +422,53 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                 input::placeholder { color: #3a5a70; }
                 textarea::placeholder { color: #3a5a70; }
                 input:focus, textarea:focus {
-                    border-color: #2dd4bf !important;
-                    box-shadow: 0 0 0 3px rgba(45,212,191,0.08);
+                    border-color: #11b780 !important;
+                    box-shadow: 0 0 0 3px rgba(17,183,128,0.12);
                 }
                 button { cursor: pointer; }
+                .config-shell {
+                    width: 100%;
+                    margin: 0;
+                }
+                .config-profile {
+                    width: 100%;
+                }
+                .config-fields {
+                    width: 100%;
+                }
+                .config-actions {
+                    width: 100%;
+                }
+                .config-actions > button {
+                    flex: 1;
+                    min-width: 160px;
+                }
+                @media (max-width: 900px) {
+                    .config-profile {
+                        flex-wrap: wrap;
+                        align-items: flex-start;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .config-fields {
+                        flex-direction: column;
+                    }
+                    .config-age {
+                        width: 100% !important;
+                    }
+                    .config-bubble {
+                        max-width: 100% !important;
+                    }
+                    .config-actions {
+                        flex-direction: column;
+                    }
+                    .config-actions > button {
+                        width: 100%;
+                    }
+                }
             `}</style>
 
-            <div style={{ maxWidth: 780, margin: "0 auto" }}>
+            <div className="config-shell" style={{ width: "100%", margin: "0 auto" }}>
                 <div style={{ marginBottom: 20 }}>
                     <button
                         onClick={onBack}
@@ -408,12 +491,12 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                     <h1 style={{ color: "#e8f4f8", fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
                         Configuration
                     </h1>
-                    <p style={{ color: "#2dd4bf", fontSize: 13, margin: "4px 0 0", fontWeight: 500 }}>
+                    <p style={{ color: "#11b780", fontSize: 13, margin: "4px 0 0", fontWeight: 500 }}>
                         Adjust system preferences and behavior
                     </p>
                 </div>
 
-                <div style={{ ...sectionStyle, display: "flex", alignItems: "center", gap: 20 }}>
+                <div className="config-profile" style={{ ...sectionStyle, display: "flex", alignItems: "center", gap: 20 }}>
                     <ConfigDadAvatar />
                     <div>
                         <span style={{ ...labelStyle, marginBottom: 2 }}>CHARACTER NAME</span>
@@ -422,7 +505,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                 </div>
 
                 <div style={sectionStyle}>
-                    <div style={{ display: "flex", gap: 16 }}>
+                    <div className="config-fields" style={{ display: "flex", gap: 16 }}>
                         <div style={{ flex: 1 }}>
                             <label style={labelStyle}>CHILD NAME</label>
                             <input
@@ -432,7 +515,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                                 placeholder="Enter child name"
                             />
                         </div>
-                        <div style={{ width: 130 }}>
+                        <div className="config-age" style={{ width: 130 }}>
                             <label style={labelStyle}>AGE</label>
                             <input
                                 style={inputStyle}
@@ -447,8 +530,8 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                 <div style={sectionStyle}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <label style={{ ...labelStyle, marginBottom: 0 }}>VOICE TONE</label>
-                        <span style={{ fontSize: 12, color: "#2dd4bf", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2dd4bf", display: "inline-block" }} />
+                        <span style={{ fontSize: 12, color: "#11b780", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#11b780", display: "inline-block" }} />
                             Preview Ready
                         </span>
                     </div>
@@ -461,7 +544,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                                     padding: "8px 18px",
                                     borderRadius: 30,
                                     border: selectedTone === tone ? "none" : "1px solid #1e3a50",
-                                    background: selectedTone === tone ? "#2dd4bf" : "transparent",
+                                    background: selectedTone === tone ? "#11b780" : "transparent",
                                     color: selectedTone === tone ? "#091520" : "#5a8aa0",
                                     fontWeight: 700,
                                     fontSize: 12,
@@ -479,13 +562,13 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                 <div style={sectionStyle}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <label style={{ ...labelStyle, marginBottom: 0 }}>CONVERSATION TRANSCRIPT</label>
-                        <button style={{ background: "none", border: "none", color: "#2dd4bf", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
+                        <button style={{ background: "none", border: "none", color: "#11b780", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
                             VIEW FULL <ConfigChevronRight />
                         </button>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-                        <div style={{ maxWidth: "80%" }}>
+                        <div className="config-bubble" style={{ maxWidth: "80%" }}>
                             <div style={{
                                 background: "#1a3a52",
                                 borderRadius: "14px 14px 4px 14px",
@@ -507,7 +590,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                        <div style={{ maxWidth: "80%" }}>
+                        <div className="config-bubble" style={{ maxWidth: "80%" }}>
                             <div style={{
                                 background: "#132535",
                                 border: "1px solid #1a3a52",
@@ -529,7 +612,7 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                 <div style={sectionStyle}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <label style={{ ...labelStyle, marginBottom: 0 }}>CHARACTER INSTRUCTIONS</label>
-                        <button style={{ background: "none", border: "none", color: "#2dd4bf", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0, cursor: "pointer" }}>
+                        <button style={{ background: "none", border: "none", color: "#11b780", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: 0, cursor: "pointer" }}>
                             VIEW FULL <ConfigChevronRight />
                         </button>
                     </div>
@@ -551,12 +634,12 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                             width: 40,
                             height: 40,
                             borderRadius: "50%",
-                            background: "linear-gradient(135deg, #2dd4bf, #0ea5e9)",
+                            background: "linear-gradient(135deg, #11b780, #0d9668)",
                             border: "none",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            boxShadow: "0 4px 14px rgba(45,212,191,0.35)",
+                            boxShadow: "0 4px 14px rgba(17,183,128,0.35)",
                         }}>
                             <MicIcon />
                         </button>
@@ -566,12 +649,12 @@ function ConfigurationPanel({ onBack }: { onBack: () => void }) {
                     </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <div className="config-actions" style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
                     <button style={{
                         padding: "13px 26px",
                         borderRadius: 30,
                         border: "none",
-                        background: "#2dd4bf",
+                        background: "#11b780",
                         color: "#091520",
                         fontWeight: 700,
                         fontSize: 14,

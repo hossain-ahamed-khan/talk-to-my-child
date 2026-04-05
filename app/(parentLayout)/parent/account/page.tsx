@@ -3,7 +3,7 @@ import { useState } from "react";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ShareIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
         <polyline points="16 6 12 2 8 6" />
         <line x1="12" y1="2" x2="12" y2="15" />
@@ -11,7 +11,7 @@ const ShareIcon = () => (
 );
 
 const GiftIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 12 20 22 4 22 4 12" />
         <rect x="2" y="7" width="20" height="5" />
         <line x1="12" y1="22" x2="12" y2="7" />
@@ -39,7 +39,7 @@ const ChevronRight = () => (
 );
 
 const PersonIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -48,7 +48,7 @@ const PersonIcon = () => (
 );
 
 const ChildIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="8" r="4" />
         <path d="M6 20v-2a6 6 0 0 1 12 0v2" />
     </svg>
@@ -101,6 +101,8 @@ const card: React.CSSProperties = {
     border: "1px solid #1a3348",
     borderRadius: 14,
     padding: "20px 24px",
+    width: "100%",
+    boxSizing: "border-box",
 };
 
 const label: React.CSSProperties = {
@@ -146,22 +148,63 @@ export default function AccountSettings() {
         <div style={{
             background: "#091520",
             minHeight: "100vh",
-            padding: "24px",
+            padding: "clamp(12px, 2.5vw, 24px)",
             fontFamily: "'DM Sans', sans-serif",
             color: "#e8f4f8",
         }}>
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
         input::placeholder { color: #2a4a5a; }
-        input:focus { border-color: #2dd4bf !important; box-shadow: 0 0 0 3px rgba(45,212,191,0.08); }
+                input:focus { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.08); }
         button { cursor: pointer; transition: opacity 0.15s; }
         button:hover { opacity: 0.85; }
+
+        .account-container {
+            width: 100%;
+        }
+
+        .responsive-two-col {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .plan-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .responsive-two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .plan-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .section-header {
+                align-items: flex-start;
+            }
+        }
       `}</style>
 
-            <div style={{ maxWidth: 1020, margin: "0 auto" }}>
+            <div className="account-container">
 
                 {/* ── Row 1: Credit Status + Referral Goal ── */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div className="responsive-two-col" style={{ marginBottom: 16 }}>
 
                     {/* Credit Status */}
                     <div style={card}>
@@ -169,7 +212,7 @@ export default function AccountSettings() {
                         <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
                             <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8f4f8" }}>0 Remaining Credits</h2>
                             <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                <span style={{ color: "#2dd4bf", fontSize: 13, fontWeight: 500 }}>Share now to earn up to +2 credits</span>
+                                <span style={{ color: "#10b981", fontSize: 13, fontWeight: 500 }}>Share now to earn up to +2 credits</span>
                                 <ShareIcon />
                             </div>
                         </div>
@@ -184,11 +227,11 @@ export default function AccountSettings() {
                         <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 8 }}>
                             <span style={{ fontSize: 26, fontWeight: 700 }}>30</span>
                             <span style={{ fontSize: 14, color: "#4a7a90" }}>/50</span>
-                            <span style={{ marginLeft: "auto", fontSize: 12, color: "#2dd4bf", fontWeight: 600 }}>60% Complete</span>
+                            <span style={{ marginLeft: "auto", fontSize: 12, color: "#10b981", fontWeight: 600 }}>60% Complete</span>
                         </div>
                         {/* Progress bar */}
                         <div style={{ background: "#1a3348", borderRadius: 99, height: 8, overflow: "hidden", marginBottom: 12 }}>
-                            <div style={{ width: "60%", height: "100%", background: "linear-gradient(90deg, #2dd4bf, #0ea5e9)", borderRadius: 99 }} />
+                            <div style={{ width: "60%", height: "100%", background: "linear-gradient(90deg, #10b981, #0ea5e9)", borderRadius: 99 }} />
                         </div>
                         <p style={{ margin: 0, fontSize: 13, color: "#8aaab8", lineHeight: 1.5 }}>
                             You&apos;re 20 away from a month of Unlimited Calls!
@@ -201,12 +244,9 @@ export default function AccountSettings() {
                     <p style={{ ...label, marginBottom: 12 }}>SUBSCRIPTION PLANS</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         {plans.map((plan) => (
-                            <div key={plan.name} style={{
+                            <div key={plan.name} className="plan-row" style={{
                                 ...card,
                                 padding: "16px 24px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
                                 borderLeft: `3px solid ${plan.accent}`,
                                 borderRadius: 10,
                             }}>
@@ -217,7 +257,7 @@ export default function AccountSettings() {
                                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                                     {plan.badge && (
                                         <span style={{
-                                            background: "#2dd4bf",
+                                            background: "#10b981",
                                             color: "#091520",
                                             fontSize: 9,
                                             fontWeight: 800,
@@ -240,7 +280,7 @@ export default function AccountSettings() {
                                         fontSize: 13,
                                         padding: "6px 16px",
                                         fontFamily: "'DM Sans', sans-serif",
-                                        ...(plan.name === "Bronze" ? { background: "#2dd4bf", color: "#091520", border: "none" } : {}),
+                                        ...(plan.name === "Bronze" ? { background: "#10b981", color: "#091520", border: "none" } : {}),
                                     }}>
                                         {plan.price}
                                     </button>
@@ -278,21 +318,21 @@ export default function AccountSettings() {
                 </div>
 
                 {/* ── Account Settings heading + mic ── */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div className="section-header" style={{ marginBottom: 16 }}>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#e8f4f8" }}>Account Settings</h2>
                     <button style={{
                         width: 48, height: 48, borderRadius: "50%",
-                        background: "linear-gradient(135deg, #2dd4bf, #0ea5e9)",
+                        background: "linear-gradient(135deg, #10b981, #0ea5e9)",
                         border: "none",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: "0 4px 16px rgba(45,212,191,0.35)",
+                        boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
                     }}>
                         <MicIcon />
                     </button>
                 </div>
 
                 {/* ── Bottom Row: Personal Info + Child Profiles ── */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="responsive-two-col">
 
                     {/* Personal Information */}
                     <div style={card}>
@@ -326,7 +366,7 @@ export default function AccountSettings() {
                                     <div style={{
                                         position: "absolute", bottom: 0, right: 0,
                                         width: 22, height: 22, borderRadius: "50%",
-                                        background: "#2dd4bf",
+                                        background: "#10b981",
                                         display: "flex", alignItems: "center", justifyContent: "center",
                                         border: "2px solid #091520",
                                     }}>
@@ -337,7 +377,7 @@ export default function AccountSettings() {
                         </div>
 
                         <button style={{
-                            background: "#2dd4bf",
+                            background: "#10b981",
                             color: "#091520",
                             border: "none",
                             borderRadius: 24,
@@ -359,7 +399,7 @@ export default function AccountSettings() {
                             </div>
                             <button style={{
                                 background: "none", border: "none",
-                                color: "#2dd4bf", fontSize: 13, fontWeight: 600,
+                                color: "#10b981", fontSize: 13, fontWeight: 600,
                                 fontFamily: "'DM Sans', sans-serif", padding: 0,
                             }}>
                                 + Add New

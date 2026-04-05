@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type VoiceGender = "Male" | "Female" | "Neutral";
 type Gender = "Male" | "Female" | "Other";
@@ -15,7 +15,19 @@ export default function AddNewCharacter() {
         "Warm, encouraging, and likes to tell dad jokes. Always starts conversations with 'Hey champ!'."
     );
     const [characterImage, setCharacterImage] = useState<string | null>(null);
+    const [showChildAccountView, setShowChildAccountView] = useState(false);
+    const [viewportWidth, setViewportWidth] = useState(1440);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+        updateViewportWidth();
+        window.addEventListener("resize", updateViewportWidth);
+        return () => window.removeEventListener("resize", updateViewportWidth);
+    }, []);
+
+    const isTablet = viewportWidth <= 1024;
+    const isMobile = viewportWidth <= 768;
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -27,7 +39,7 @@ export default function AddNewCharacter() {
     };
 
     const handleCreate = () => {
-        alert(`Character "${characterName}" created!`);
+        setShowChildAccountView(true);
     };
 
     const handleCancel = () => {
@@ -39,9 +51,180 @@ export default function AddNewCharacter() {
         setCharacterImage(null);
     };
 
+    const handleBackToCharacter = () => {
+        setShowChildAccountView(false);
+    };
+
+    const handleChildCreate = () => {
+        alert(`Child account for "${characterName || "your child"}" created!`);
+    };
+
+    if (showChildAccountView) {
+        return (
+            <div style={{ ...styles.page, padding: isMobile ? "12px" : isTablet ? "18px" : "24px" }}>
+                <div style={styles.childAccountLayout}>
+                    <div style={styles.childAccountLeft}>
+                        <div style={styles.header}>
+                            <h1 style={styles.title}>Add New Child Account</h1>
+                            <p style={styles.subtitle}>Enter your child&apos;s details below.</p>
+                        </div>
+
+                        <h2 style={styles.sectionTitle}>Child Information</h2>
+
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Child Name</label>
+                                <input
+                                    style={styles.input}
+                                    value={characterName}
+                                    onChange={(e) => setCharacterName(e.target.value)}
+                                    placeholder="George Blaze"
+                                />
+                            </div>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Age</label>
+                                <div style={styles.selectWrapper}>
+                                    <select
+                                        style={styles.select}
+                                        value={approximateAge || "12"}
+                                        onChange={(e) => setApproximateAge(e.target.value)}
+                                    >
+                                        {Array.from({ length: 16 }, (_, i) => i + 5).map((age) => (
+                                            <option key={age} value={String(age)}>
+                                                {age}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <span style={styles.selectArrow}>▾</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Username</label>
+                                <input style={styles.input} defaultValue="Dad" />
+                            </div>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Email</label>
+                                <input style={styles.input} defaultValue="Dad" />
+                            </div>
+                        </div>
+
+                        <div style={styles.fieldGroup}>
+                            <label style={styles.label}>Password</label>
+                            <div style={styles.passwordField}>
+                                <input style={styles.passwordInput} type="password" defaultValue="password" />
+                                <span style={styles.passwordIcon}>◌</span>
+                            </div>
+                        </div>
+
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row", marginTop: "20px" }}>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Focus Subjects (Optional)</label>
+                                <p style={styles.helperText}>
+                                    Select areas you want the AI to emphasize during conversations.
+                                </p>
+                                <div style={styles.chipsBox}>
+                                    {["Math", "Science", "English"].map((item) => (
+                                        <span key={item} style={styles.chip}>
+                                            {item} x
+                                        </span>
+                                    ))}
+                                    <span style={styles.chipPlaceholder}>Add subject...</span>
+                                </div>
+                            </div>
+
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Personality (Optional)</label>
+                                <p style={styles.helperText}>Define the behavioral traits the AI should adapt to.</p>
+                                <div style={styles.chipsBox}>
+                                    {["Creative", "Curious", "Energetic"].map((item) => (
+                                        <span key={item} style={styles.chip}>
+                                            {item} x
+                                        </span>
+                                    ))}
+                                    <span style={styles.chipPlaceholder}>Add trait...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Interests (Optional)</label>
+                                <p style={styles.helperText}>Topics that get your child excited and engaged.</p>
+                                <input style={styles.input} placeholder="e.g. Space, Dinosaurs..." />
+                            </div>
+
+                            <div style={styles.fieldGroup}>
+                                <label style={styles.label}>Dislikes (Optional)</label>
+                                <p style={styles.helperText}>Avoid these topics to keep the experience positive.</p>
+                                <input style={styles.input} placeholder="e.g. Loud noises, Broccoli..." />
+                            </div>
+                        </div>
+
+                        <div style={{ ...styles.buttonRow, flexDirection: isMobile ? "column" : "row" }}>
+                            <button
+                                style={{ ...styles.createBtn, width: isMobile ? "100%" : "auto" }}
+                                onClick={handleChildCreate}
+                            >
+                                Create Child
+                            </button>
+                            <button
+                                style={{ ...styles.cancelBtn, width: isMobile ? "100%" : "auto" }}
+                                onClick={handleBackToCharacter}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={styles.childAccountRight}>
+                        <h2 style={styles.rightTitle}>Upload Child Image (Optional)</h2>
+                        <div style={styles.childImageFrame} onClick={() => fileInputRef.current?.click()}>
+                            {characterImage ? (
+                                <Image
+                                    src={characterImage}
+                                    alt="Child avatar"
+                                    width={90}
+                                    height={90}
+                                    style={styles.childPreviewImage}
+                                />
+                            ) : (
+                                <div style={styles.imagePlaceholder}>
+                                    <span style={styles.cameraIcon}>📷</span>
+                                    <div style={styles.plusBadge}>+</div>
+                                </div>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: "none" }}
+                                onChange={handleImageUpload}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    style={{
+                        ...styles.fab,
+                        right: isMobile ? "14px" : "28px",
+                        bottom: isMobile ? "14px" : "28px",
+                        width: isMobile ? "48px" : "52px",
+                        height: isMobile ? "48px" : "52px",
+                    }}
+                >
+                    🎤
+                </button>
+            </div>
+        );
+    }
+
     return (
-        <div style={styles.page}>
-            <div style={styles.container}>
+        <div style={{ ...styles.page, padding: isMobile ? "12px" : isTablet ? "18px" : "24px" }}>
+            <div style={{ ...styles.container, flexDirection: isTablet ? "column" : "row" }}>
                 {/* Left Panel */}
                 <div style={styles.leftPanel}>
                     <div style={styles.header}>
@@ -55,7 +238,7 @@ export default function AddNewCharacter() {
                         <h2 style={styles.sectionTitle}>Character Information</h2>
 
                         {/* Row: Name + Gender */}
-                        <div style={styles.row}>
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
                             <div style={styles.fieldGroup}>
                                 <label style={styles.label}>Character Name</label>
                                 <input
@@ -83,7 +266,7 @@ export default function AddNewCharacter() {
                         </div>
 
                         {/* Row: Voice Gender + Approximate Age */}
-                        <div style={styles.row}>
+                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
                             <div style={styles.fieldGroup}>
                                 <label style={styles.label}>Voice Gender</label>
                                 <div style={styles.toggleGroup}>
@@ -127,11 +310,17 @@ export default function AddNewCharacter() {
                         </div>
 
                         {/* Buttons */}
-                        <div style={styles.buttonRow}>
-                            <button style={styles.createBtn} onClick={handleCreate}>
+                        <div style={{ ...styles.buttonRow, flexDirection: isMobile ? "column" : "row" }}>
+                            <button
+                                style={{ ...styles.createBtn, width: isMobile ? "100%" : "auto" }}
+                                onClick={handleCreate}
+                            >
                                 Create Character
                             </button>
-                            <button style={styles.cancelBtn} onClick={handleCancel}>
+                            <button
+                                style={{ ...styles.cancelBtn, width: isMobile ? "100%" : "auto" }}
+                                onClick={handleCancel}
+                            >
                                 Cancel
                             </button>
                         </div>
@@ -139,7 +328,14 @@ export default function AddNewCharacter() {
                 </div>
 
                 {/* Right Panel */}
-                <div style={styles.rightPanel}>
+                <div
+                    style={{
+                        ...styles.rightPanel,
+                        width: "100%",
+                        maxWidth: isTablet ? "100%" : "360px",
+                        alignItems: "stretch",
+                    }}
+                >
                     <h2 style={styles.rightTitle}>Upload Character Image (Optional)</h2>
 
                     <div style={styles.imageUploadArea} onClick={() => fileInputRef.current?.click()}>
@@ -200,7 +396,17 @@ export default function AddNewCharacter() {
             </div>
 
             {/* Floating mic button */}
-            <button style={styles.fab}>🎤</button>
+            <button
+                style={{
+                    ...styles.fab,
+                    right: isMobile ? "14px" : "28px",
+                    bottom: isMobile ? "14px" : "28px",
+                    width: isMobile ? "48px" : "52px",
+                    height: isMobile ? "48px" : "52px",
+                }}
+            >
+                🎤
+            </button>
         </div>
     );
 }
@@ -208,28 +414,52 @@ export default function AddNewCharacter() {
 const styles: Record<string, React.CSSProperties> = {
     page: {
         minHeight: "100vh",
-        backgroundColor: "#0d1117",
+        backgroundColor: "#0f172a",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "stretch",
+        justifyContent: "flex-start",
         fontFamily: "'Segoe UI', sans-serif",
-        padding: "24px",
         boxSizing: "border-box",
         position: "relative",
+        width: "100%",
     },
     container: {
         display: "flex",
         gap: "24px",
         width: "100%",
-        maxWidth: "1100px",
+        maxWidth: "100%",
         alignItems: "flex-start",
     },
-    leftPanel: {
-        flex: 1,
-        backgroundColor: "#131920",
-        borderRadius: "16px",
-        padding: "32px",
+    childAccountLayout: {
+        display: "flex",
+        gap: "24px",
+        width: "100%",
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+    },
+    childAccountLeft: {
+        flex: "1 1 720px",
+        minWidth: "320px",
+    },
+    childAccountRight: {
+        flex: "0 0 360px",
+        width: "100%",
+        maxWidth: "360px",
         border: "1px solid #1e2a35",
+        borderRadius: "14px",
+        padding: "28px",
+        backgroundColor: "rgba(7,16,39,0.55)",
+        boxSizing: "border-box",
+        minHeight: "236px",
+    },
+    leftPanel: {
+        flex: "1 1 0",
+        width: "100%",
+        backgroundColor: "transparent",
+        borderRadius: "16px",
+        padding: "clamp(16px, 2.4vw, 32px)",
+        border: "1px solid #1e2a35",
+        boxSizing: "border-box",
     },
     header: {
         marginBottom: "28px",
@@ -256,6 +486,7 @@ const styles: Record<string, React.CSSProperties> = {
         display: "flex",
         gap: "16px",
         marginBottom: "20px",
+        width: "100%",
     },
     fieldGroup: {
         flex: 1,
@@ -269,7 +500,7 @@ const styles: Record<string, React.CSSProperties> = {
         fontWeight: 500,
     },
     input: {
-        backgroundColor: "#0d1117",
+        backgroundColor: "transparent",
         border: "1px solid #1e2a35",
         borderRadius: "8px",
         padding: "12px 14px",
@@ -279,12 +510,17 @@ const styles: Record<string, React.CSSProperties> = {
         width: "100%",
         boxSizing: "border-box",
     },
+    helperText: {
+        margin: "0 0 8px",
+        color: "#5b6d84",
+        fontSize: "13px",
+    },
     selectWrapper: {
         position: "relative",
     },
     select: {
         width: "100%",
-        backgroundColor: "#0d1117",
+        backgroundColor: "transparent",
         border: "1px solid #1e2a35",
         borderRadius: "8px",
         padding: "12px 36px 12px 14px",
@@ -303,9 +539,57 @@ const styles: Record<string, React.CSSProperties> = {
         pointerEvents: "none",
         fontSize: "16px",
     },
+    passwordField: {
+        position: "relative",
+        width: "100%",
+    },
+    passwordInput: {
+        backgroundColor: "transparent",
+        border: "1px solid #1e2a35",
+        borderRadius: "999px",
+        padding: "12px 42px 12px 14px",
+        color: "#ffffff",
+        fontSize: "14px",
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+    },
+    passwordIcon: {
+        position: "absolute",
+        top: "50%",
+        right: "14px",
+        transform: "translateY(-50%)",
+        color: "#5b6d84",
+        fontSize: "13px",
+    },
+    chipsBox: {
+        minHeight: "74px",
+        border: "1px solid #1e2a35",
+        borderRadius: "18px",
+        padding: "12px",
+        display: "flex",
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+        gap: "8px",
+    },
+    chip: {
+        backgroundColor: "rgba(8,177,130,0.12)",
+        color: "#00c39a",
+        padding: "7px 12px",
+        borderRadius: "999px",
+        fontSize: "13px",
+        fontWeight: 600,
+    },
+    chipPlaceholder: {
+        color: "#8a9bb0",
+        fontSize: "14px",
+        alignSelf: "center",
+        marginLeft: "4px",
+    },
     toggleGroup: {
         display: "flex",
         gap: "8px",
+        flexWrap: "wrap",
     },
     toggleBtn: {
         padding: "9px 18px",
@@ -316,14 +600,15 @@ const styles: Record<string, React.CSSProperties> = {
         fontSize: "13px",
         cursor: "pointer",
         fontWeight: 500,
+        flex: "1 1 auto",
     },
     toggleBtnActive: {
-        backgroundColor: "#1db954",
-        borderColor: "#1db954",
+        backgroundColor: "#11b780",
+        borderColor: "#11b780",
         color: "#ffffff",
     },
     textarea: {
-        backgroundColor: "#0d1117",
+        backgroundColor: "transparent",
         border: "1px solid #1e2a35",
         borderRadius: "8px",
         padding: "12px 14px",
@@ -342,7 +627,7 @@ const styles: Record<string, React.CSSProperties> = {
         marginTop: "28px",
     },
     createBtn: {
-        backgroundColor: "#1db954",
+        backgroundColor: "#11b780",
         color: "#ffffff",
         border: "none",
         borderRadius: "999px",
@@ -364,15 +649,16 @@ const styles: Record<string, React.CSSProperties> = {
 
     // Right Panel
     rightPanel: {
-        width: "320px",
-        backgroundColor: "#131920",
+        flex: "1 1 320px",
+        backgroundColor: "transparent",
         borderRadius: "16px",
-        padding: "28px",
+        padding: "clamp(16px, 2.1vw, 28px)",
         border: "1px solid #1e2a35",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: "24px",
+        boxSizing: "border-box",
     },
     rightTitle: {
         color: "#ffffff",
@@ -380,6 +666,22 @@ const styles: Record<string, React.CSSProperties> = {
         fontWeight: 600,
         textAlign: "center",
         margin: 0,
+    },
+    childImageFrame: {
+        marginTop: "32px",
+        width: "100%",
+        minHeight: "160px",
+        borderRadius: "12px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+    },
+    childPreviewImage: {
+        width: "90px",
+        height: "90px",
+        borderRadius: "50%",
+        objectFit: "cover",
     },
     imageUploadArea: {
         width: "110px",
@@ -407,7 +709,7 @@ const styles: Record<string, React.CSSProperties> = {
         position: "absolute",
         bottom: "-14px",
         right: "-14px",
-        backgroundColor: "#1db954",
+        backgroundColor: "#11b780",
         color: "#fff",
         borderRadius: "50%",
         width: "22px",
@@ -443,7 +745,7 @@ const styles: Record<string, React.CSSProperties> = {
         display: "flex",
         alignItems: "center",
         gap: "12px",
-        backgroundColor: "#0d1117",
+        backgroundColor: "transparent",
         border: "1px solid #1e2a35",
         borderRadius: "10px",
         padding: "14px 16px",
@@ -452,7 +754,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     voiceIcon: {
         fontSize: "18px",
-        color: "#1db954",
+        color: "#11b780",
         minWidth: "24px",
         textAlign: "center",
     },
@@ -485,13 +787,13 @@ const styles: Record<string, React.CSSProperties> = {
         width: "52px",
         height: "52px",
         borderRadius: "50%",
-        backgroundColor: "#1db954",
+        backgroundColor: "#11b780",
         border: "none",
         fontSize: "22px",
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(29,185,84,0.4)",
+        boxShadow: "0 4px 16px rgba(17,183,128,0.4)",
     },
 };

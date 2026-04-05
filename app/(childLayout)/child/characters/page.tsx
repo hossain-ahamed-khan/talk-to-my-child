@@ -37,6 +37,7 @@ const characters: Character[] = [
 function CharacterCard({ character }: { character: Character }) {
     return (
         <div
+            className="character-card"
             style={{
                 backgroundColor: "#0f1e33",
                 border: "1px solid #162845",
@@ -52,8 +53,8 @@ function CharacterCard({ character }: { character: Character }) {
             onMouseLeave={e => (e.currentTarget.style.borderColor = "#162845")}
         >
             {/* Top row: avatar + name + call button */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="character-card-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div className="character-card-profile" style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     {/* Avatar */}
                     <div style={{ position: "relative", flexShrink: 0 }}>
                         <Image
@@ -75,7 +76,7 @@ function CharacterCard({ character }: { character: Character }) {
                                 transform: "translateX(-50%)",
                                 width: 10,
                                 height: 10,
-                                backgroundColor: "#22c55e",
+                                backgroundColor: "#11b780",
                                 borderRadius: "50%",
                                 border: "2px solid #0f1e33",
                             }} />
@@ -92,11 +93,11 @@ function CharacterCard({ character }: { character: Character }) {
                                 <span style={{
                                     width: 8,
                                     height: 8,
-                                    backgroundColor: "#22c55e",
+                                    backgroundColor: "#11b780",
                                     borderRadius: "50%",
                                     display: "inline-block",
                                 }} />
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#22c55e", textTransform: "uppercase" }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#11b780", textTransform: "uppercase" }}>
                                     Available
                                 </span>
                             </div>
@@ -106,11 +107,12 @@ function CharacterCard({ character }: { character: Character }) {
 
                 {/* Call button */}
                 <button
+                    className="character-call-btn"
                     style={{
                         width: 46,
                         height: 46,
                         borderRadius: "50%",
-                        backgroundColor: "#16a34a",
+                        backgroundColor: "#11b780",
                         border: "none",
                         display: "flex",
                         alignItems: "center",
@@ -120,11 +122,11 @@ function CharacterCard({ character }: { character: Character }) {
                         transition: "background-color 0.2s, transform 0.15s",
                     }}
                     onMouseEnter={e => {
-                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#15803d";
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#0d9668";
                         (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.07)";
                     }}
                     onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#16a34a";
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#11b780";
                         (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                     }}
                 >
@@ -145,13 +147,78 @@ export default function PopularCharacters() {
         <div style={{
             minHeight: "100vh",
             backgroundColor: "#0d1526",
-            padding: "28px 24px",
+            padding: "clamp(12px, 3vw, 28px) clamp(10px, 3vw, 24px)",
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         }}>
-            <div style={{ maxWidth: 980, margin: "0 auto" }}>
+            <style>{`
+                * { box-sizing: border-box; }
+                .characters-shell {
+                    width: 100%;
+                    margin: 0;
+                }
+                .characters-header {
+                    width: 100%;
+                    gap: 12px;
+                }
+                .characters-grid {
+                    width: 100%;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 12px;
+                }
+                .character-card {
+                    width: 100%;
+                }
+                .characters-fab {
+                    right: clamp(10px, 2.5vw, 28px);
+                    bottom: clamp(10px, 2.5vw, 28px);
+                }
+                @media (max-width: 900px) {
+                    .characters-grid {
+                        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                    }
+                }
+                @media (max-width: 640px) {
+                    .characters-header {
+                        flex-wrap: wrap;
+                        align-items: flex-start !important;
+                    }
+                    .characters-grid {
+                        grid-template-columns: 1fr;
+                        gap: 10px;
+                    }
+                    .character-card {
+                        padding: 14px;
+                    }
+                    .character-card-top {
+                        align-items: flex-start !important;
+                    }
+                    .character-card-profile {
+                        min-width: 0;
+                    }
+                    .character-call-btn {
+                        width: 42px !important;
+                        height: 42px !important;
+                    }
+                    .characters-fab {
+                        width: 48px !important;
+                        height: 48px !important;
+                    }
+                }
+                @media (max-width: 380px) {
+                    .character-card-top {
+                        flex-direction: column;
+                    }
+                    .character-call-btn {
+                        align-self: flex-end;
+                    }
+                }
+            `}</style>
+
+            <div className="characters-shell" style={{ width: "100%", margin: "0 auto" }}>
 
                 {/* Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div className="characters-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                     <h2 style={{ fontSize: 20, fontWeight: 800, color: "#ffffff", margin: 0 }}>
                         Popular Characters
                     </h2>
@@ -160,7 +227,7 @@ export default function PopularCharacters() {
                         border: "none",
                         fontSize: 13,
                         fontWeight: 600,
-                        color: "#22c55e",
+                        color: "#11b780",
                         cursor: "pointer",
                         padding: 0,
                     }}>
@@ -169,7 +236,7 @@ export default function PopularCharacters() {
                 </div>
 
                 {/* 2-column grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="characters-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
                     {characters.map(c => (
                         <CharacterCard key={c.id} character={c} />
                     ))}
@@ -179,6 +246,7 @@ export default function PopularCharacters() {
 
             {/* Floating mic button */}
             <button
+                className="characters-fab"
                 style={{
                     position: "fixed",
                     bottom: 28,
@@ -186,21 +254,21 @@ export default function PopularCharacters() {
                     width: 54,
                     height: 54,
                     borderRadius: "50%",
-                    backgroundColor: "#16a34a",
+                    backgroundColor: "#11b780",
                     border: "none",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
-                    boxShadow: "0 4px 20px rgba(22,163,74,0.4)",
+                    boxShadow: "0 4px 20px rgba(17,183,128,0.4)",
                     transition: "transform 0.15s, background-color 0.2s",
                 }}
                 onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#15803d";
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#0d9668";
                     (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)";
                 }}
                 onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#16a34a";
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#11b780";
                     (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                 }}
             >

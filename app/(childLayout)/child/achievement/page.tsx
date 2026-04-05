@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+
+const PRIMARY = "#10996f";
 
 const MathIcon = () => (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -27,7 +28,7 @@ const LanguageIcon = () => (
 );
 
 const LockIcon = () => (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3d516b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
@@ -58,8 +59,8 @@ const subjects: Subject[] = [
         hours: 100,
         maxHours: 100,
         icon: <MathIcon />,
-        ringColor: "#f59e0b",
-        iconBg: "#d97706",
+        ringColor: "#f3aa17",
+        iconBg: "#d9910a",
         completed: true,
     },
     {
@@ -68,8 +69,8 @@ const subjects: Subject[] = [
         hours: 62,
         maxHours: 100,
         icon: <ScienceIcon />,
-        ringColor: "#6b7280",
-        iconBg: "#374151",
+        ringColor: "#97a9bf",
+        iconBg: "#7f93ad",
     },
     {
         id: 3,
@@ -77,8 +78,8 @@ const subjects: Subject[] = [
         hours: 45,
         maxHours: 100,
         icon: <LanguageIcon />,
-        ringColor: "#f97316",
-        iconBg: "#ea580c",
+        ringColor: "#d27416",
+        iconBg: "#b55c0b",
     },
     {
         id: 4,
@@ -86,8 +87,8 @@ const subjects: Subject[] = [
         hours: 12,
         maxHours: 100,
         icon: <LockIcon />,
-        ringColor: "#1f2937",
-        iconBg: "#1f2937",
+        ringColor: "#22324a",
+        iconBg: "#1b2a40",
         locked: true,
     },
 ];
@@ -148,122 +149,207 @@ export default function UsageMilestones() {
     const barPct = (checkin / total) * 100;
 
     return (
-        <div style={{
-            minHeight: "100vh",
-            backgroundColor: "#0d1526",
-            padding: "28px 28px",
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        }}>
-            <div style={{ maxWidth: 980, margin: "0 auto" }}>
+        <>
+            <style>{`
+                :root {
+                    --primary: #10996f;
+                    --primary-soft: rgba(16,153,111,0.28);
+                    --card-bg: #0b1b34;
+                    --card-border: #1b3151;
+                    --label-color: #6f85a3;
+                    --card-hover-border: #2a456b;
+                }
 
-                {/* Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                    <div>
-                        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "#22c55e", textTransform: "uppercase", margin: "0 0 4px" }}>
-                            Weekly Reset
-                        </p>
-                        <h1 style={{ fontSize: 25, fontWeight: 800, color: "#ffffff", margin: 0, lineHeight: 1.2 }}>
-                            Usage Milestones
-                        </h1>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", margin: 0 }}>
-                            Check-in: <span style={{ color: "#22c55e" }}>{checkin}/{total} Days</span>
-                        </p>
-                        <p style={{ fontSize: 12, color: "#475569", margin: "3px 0 0" }}>
-                            Usage: 12h 30m
-                        </p>
-                    </div>
-                </div>
+                .achievement-page {
+                    width: 100%;
+                    min-height: 100vh;
+                    background-color: #0d1526;
+                    padding: 28px;
+                    box-sizing: border-box;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                }
 
-                {/* Progress bar */}
-                <div style={{ width: "100%", height: 6, backgroundColor: "#1e293b", borderRadius: 99, marginBottom: 16, overflow: "hidden" }}>
+                .achievement-container {
+                    width: 100%;
+                }
+
+                .achievement-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 14px;
+                    margin-bottom: 12px;
+                }
+
+                .subject-grid {
+                    width: 100%;
+                    display: grid;
+                    grid-template-columns: repeat(4, minmax(0, 1fr));
+                    gap: 12px;
+                }
+
+                .subject-card {
+                    min-width: 0;
+                }
+
+                @media (max-width: 1100px) {
+                    .subject-grid {
+                        grid-template-columns: repeat(3, minmax(0, 1fr));
+                    }
+                }
+
+                @media (max-width: 860px) {
+                    .achievement-page {
+                        padding: 20px 16px;
+                    }
+
+                    .achievement-header {
+                        flex-direction: column;
+                    }
+
+                    .header-right {
+                        text-align: left !important;
+                    }
+
+                    .subject-grid {
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
+                }
+
+                @media (max-width: 520px) {
+                    .achievement-page {
+                        padding: 16px 12px;
+                    }
+
+                    .main-title {
+                        font-size: 22px !important;
+                    }
+
+                    .subject-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .subject-card {
+                        padding: 18px 14px 16px !important;
+                    }
+                }
+            `}</style>
+
+            <div className="achievement-page">
+                <div className="achievement-container">
+
+                    {/* Header */}
+                    <div className="achievement-header">
+                        <div>
+                            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: PRIMARY, textTransform: "uppercase", margin: "0 0 4px" }}>
+                                Weekly Reset
+                            </p>
+                            <h1 className="main-title" style={{ fontSize: 25, fontWeight: 800, color: "#ffffff", margin: 0, lineHeight: 1.2 }}>
+                                Usage Milestones
+                            </h1>
+                        </div>
+                        <div className="header-right" style={{ textAlign: "right" }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", margin: 0 }}>
+                                Check-in: <span style={{ color: PRIMARY }}>{checkin}/{total} Days</span>
+                            </p>
+                            <p style={{ fontSize: 12, color: "#475569", margin: "3px 0 0" }}>
+                                Usage: 12h 30m
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ width: "100%", height: 6, backgroundColor: "#1e293b", borderRadius: 99, marginBottom: 16, overflow: "hidden" }}>
+                        <div style={{
+                            width: `${barPct}%`,
+                            height: "100%",
+                            background: "linear-gradient(90deg, #0d7f5c, #10996f)",
+                            borderRadius: 99,
+                        }} />
+                    </div>
+
+                    {/* Streak banner */}
                     <div style={{
-                        width: `${barPct}%`,
-                        height: "100%",
-                        background: "linear-gradient(90deg, #16a34a, #4ade80)",
-                        borderRadius: 99,
-                    }} />
-                </div>
+                        backgroundColor: "#0f1e33",
+                        border: "1px solid var(--primary-soft)",
+                        borderRadius: 14,
+                        padding: "13px 18px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 38,
+                    }}>
+                        <div style={{ flexShrink: 0 }}><StarIcon /></div>
+                        <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
+                            Keep it up! Complete{" "}
+                            <strong style={{ color: "#ffffff", fontWeight: 700 }}>3 more days</strong>{" "}
+                            this week to maintain your streak.
+                        </p>
+                    </div>
 
-                {/* Streak banner */}
-                <div style={{
-                    backgroundColor: "#0f1e33",
-                    border: "1px solid #162845",
-                    borderRadius: 14,
-                    padding: "13px 18px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 38,
-                }}>
-                    <div style={{ flexShrink: 0 }}><StarIcon /></div>
-                    <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
-                        Keep it up! Complete{" "}
-                        <strong style={{ color: "#ffffff", fontWeight: 700 }}>3 more days</strong>{" "}
-                        this week to maintain your streak.
-                    </p>
-                </div>
+                    {/* Section labels */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "var(--label-color)", textTransform: "uppercase", margin: 0 }}>
+                            Core Subjects
+                        </p>
+                        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "var(--label-color)", textTransform: "uppercase", margin: 0 }}>
+                            100 HR Goal
+                        </p>
+                    </div>
 
-                {/* Section labels */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "#334155", textTransform: "uppercase", margin: 0 }}>
-                        Core Subjects
-                    </p>
-                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "#334155", textTransform: "uppercase", margin: 0 }}>
-                        100 HR Goal
-                    </p>
-                </div>
-
-                {/* Subject cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                    {subjects.map((s) => {
-                        const pct = Math.min((s.hours / s.maxHours) * 100, 100);
-                        return (
-                            <div
-                                key={s.id}
-                                style={{
-                                    backgroundColor: "#0c1a2e",
-                                    border: "1px solid #162845",
-                                    borderRadius: 16,
-                                    padding: "22px 16px 18px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    gap: 14,
-                                    transition: "border-color 0.2s",
-                                }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "#1e3a5f"; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "#162845"; }}
-                            >
-                                <CircularProgress
-                                    progress={pct}
-                                    ringColor={s.ringColor}
-                                    iconBg={s.iconBg}
-                                    locked={s.locked}
-                                    icon={s.icon}
-                                />
-                                <div style={{ textAlign: "center" }}>
-                                    <p style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", margin: "0 0 5px" }}>
-                                        {s.name}
-                                    </p>
-                                    <p style={{
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        letterSpacing: "0.04em",
-                                        textTransform: "uppercase",
-                                        color: s.completed ? "#4ade80" : s.locked ? "#1f2937" : "#475569",
-                                        margin: 0,
-                                    }}>
-                                        {s.hours}/{s.maxHours} Hours
-                                    </p>
+                    {/* Subject cards */}
+                    <div className="subject-grid">
+                        {subjects.map((s) => {
+                            const pct = Math.min((s.hours / s.maxHours) * 100, 100);
+                            return (
+                                <div
+                                    key={s.id}
+                                    className="subject-card"
+                                    style={{
+                                        backgroundColor: "var(--card-bg)",
+                                        border: "1px solid var(--card-border)",
+                                        borderRadius: 16,
+                                        padding: "22px 16px 18px",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 14,
+                                        transition: "border-color 0.2s",
+                                        width: "100%",
+                                        boxSizing: "border-box",
+                                    }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--card-hover-border)"; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--card-border)"; }}
+                                >
+                                    <CircularProgress
+                                        progress={pct}
+                                        ringColor={s.ringColor}
+                                        iconBg={s.iconBg}
+                                        locked={s.locked}
+                                        icon={s.icon}
+                                    />
+                                    <div style={{ textAlign: "center" }}>
+                                        <p style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", margin: "0 0 5px" }}>
+                                            {s.name}
+                                        </p>
+                                        <p style={{
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            letterSpacing: "0.04em",
+                                            textTransform: "uppercase",
+                                            color: s.completed ? "#f3aa17" : s.locked ? "#344a67" : "#6f85a3",
+                                            margin: 0,
+                                        }}>
+                                            {s.hours}/{s.maxHours} Hours
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
 
+                </div>
             </div>
-        </div>
+        </>
     );
 }

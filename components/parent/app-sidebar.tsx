@@ -6,7 +6,6 @@ import {
     History,
     User,
     Settings,
-    Zap,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
@@ -42,8 +41,8 @@ function NavItem({
                 href={item.url}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${isCollapsed ? "justify-center px-2" : ""
                     } ${isActive
-                        ? "bg-white/10 text-white"
-                        : "text-[#8b9ab0] hover:bg-white/5 hover:text-white"
+                        ? "bg-[#1b4648] text-white"
+                        : "text-[#8b9ab0] hover:bg-[#1b4648] hover:text-white"
                     }`}
             >
                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? "text-white" : "text-[#8b9ab0]"}`} />
