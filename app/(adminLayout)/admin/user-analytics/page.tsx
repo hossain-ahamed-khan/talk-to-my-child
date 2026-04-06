@@ -24,7 +24,7 @@ const allUsers: User[] = [
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const c = {
-    bg: "#0d1117",
+    bg: "#0f172a",
     surface: "#131b27",
     card: "#161e2e",
     border: "#1e2d3d",

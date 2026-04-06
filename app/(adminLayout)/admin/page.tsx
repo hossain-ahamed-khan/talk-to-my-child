@@ -25,7 +25,7 @@ interface StatCardProps {
 
 // ── Palette / tokens ───────────────────────────────────────────────────────
 const colors = {
-    bg: "#0d1117",
+    bg: "#0f172a",
     card: "#161b27",
     cardBorder: "#1e2736",
     text: "#e2e8f0",

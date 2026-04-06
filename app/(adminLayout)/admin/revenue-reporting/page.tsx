@@ -56,7 +56,7 @@ export default function RevenueReporting() {
         <div
             className={dmSans.className}
             style={{
-                background: "#0f1623",
+                background: "#0f172a",
                 minHeight: "100vh",
                 color: "#e2e8f0",
                 padding: "36px 36px 48px",

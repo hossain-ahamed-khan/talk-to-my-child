@@ -81,7 +81,7 @@ export default function FinancialReports() {
     return (
         <div
             style={{
-                background: "#0f1623",
+                background: "#0f172a",
                 minHeight: "100vh",
                 fontFamily: "'DM Sans', sans-serif",
                 color: "#e2e8f0",

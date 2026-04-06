@@ -68,7 +68,7 @@ export default function CharacterLibrary() {
         <div
             style={{
                 minHeight: "100vh",
-                backgroundColor: "#0F1923",
+                backgroundColor: "#0f172a",
                 color: "#FFFFFF",
                 fontFamily: "'Segoe UI', sans-serif",
                 padding: "32px",
