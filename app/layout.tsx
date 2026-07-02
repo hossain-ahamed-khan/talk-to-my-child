@@ -25,9 +25,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Keep the same font classNames on server and client and suppress minor
+  // hydration warnings (e.g. browser extensions altering HTML) to avoid
+  // the React hydration mismatch error seen in the console.
   return (
     <html lang="en">
       <body
+        suppressHydrationWarning
         className={`${dmSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>

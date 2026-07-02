@@ -23,6 +23,8 @@ import {
 import Link from "next/link";
 import mainLogo from "@/public/images/main-logo.png";
 import Image from "next/image";
+import { useAppSelector } from "@/redux/hooks";
+import { selectUser } from "@/redux/features/auth/authSlice";
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -65,6 +67,7 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const user = useAppSelector(selectUser);
     const pathname = usePathname();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
@@ -118,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             Current Balance
                         </div>
                         <div className="flex items-end justify-between mb-2">
-                            <span className="text-white font-bold text-2xl">124</span>
+                            <span className="text-white font-bold text-2xl">{user?.credit_balance}</span>
                             <span className="text-[#8b9ab0] text-[11px]">AI Credits</span>
                         </div>
                         {/* Progress bar */}
@@ -139,8 +142,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </div>
                         {!isCollapsed && (
                             <div>
-                                <div className="text-white font-semibold text-[13px]">Sarah Jenkins</div>
-                                <div className="text-[#4ade80] text-[11px]">Premium Member</div>
+                                <div className="text-white font-semibold text-[13px]">{user?.full_name}</div>
+                                <div className="text-[#4ade80] text-[11px]">Referral Code: {user?.referral_code}</div>
                             </div>
                         )}
                     </div>
