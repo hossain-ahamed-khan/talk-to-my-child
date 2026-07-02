@@ -1,5 +1,11 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { useAppDispatch } from "@/redux/hooks";
+import { setUser } from "@/redux/features/auth/authSlice";
+import { useLoginMutation } from "@/redux/features/auth/authApi";
 
 const ChatIcon = () => (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -59,6 +65,42 @@ export default function TalkToMyChildLogin() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(true);
+    const [login, { isLoading }] = useLoginMutation();
+    const dispatch = useAppDispatch();
+    const router = useRouter();
+
+    const getRedirectPath = (role: string) => {
+        switch (role) {
+            case "admin":
+                return "/admin";
+            case "child":
+                return "/child";
+            case "parent":
+            default:
+                return "/parent";
+        }
+    };
+
+    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        try {
+            const response = await login({ email, password }).unwrap();
+            dispatch(
+                setUser({
+                    user: response.data.user_data,
+                    token: response.data.access_token,
+                    role: response.data.role,
+                })
+            );
+            toast.success(response.message || "Login successful.");
+            router.replace(getRedirectPath(response.data.role));
+        } catch (error: any) {
+            const errorMessage =
+                error?.data?.message || error?.message || "Login failed. Please try again.";
+            toast.error(errorMessage);
+        }
+    };
 
     return (
         <div style={{
@@ -196,7 +238,7 @@ export default function TalkToMyChildLogin() {
                 </div>
 
                 {/* RIGHT SIDE — Login Card */}
-                <div style={{
+                <form onSubmit={handleLogin} style={{
                     width: "440px",
                     flexShrink: 0,
                     background: "#111f2b",
@@ -324,13 +366,15 @@ export default function TalkToMyChildLogin() {
                             </div>
                             <span style={{ fontSize: "13px", color: "#8fa89f" }}>Remember Password</span>
                         </label>
-                        <button style={{ background: "none", border: "none", color: "#8fa89f", fontSize: "13px", cursor: "pointer", padding: 0 }}>
+                        <button type="button" style={{ background: "none", border: "none", color: "#8fa89f", fontSize: "13px", cursor: "pointer", padding: 0 }}>
                             Forget Password?
                         </button>
                     </div>
 
                     {/* Continue with Email */}
                     <button
+                        type="submit"
+                        disabled={isLoading}
                         style={{
                             width: "100%",
                             padding: "15px",
@@ -343,11 +387,12 @@ export default function TalkToMyChildLogin() {
                             cursor: "pointer",
                             marginBottom: "16px",
                             transition: "opacity 0.2s",
+                            opacity: isLoading ? 0.7 : 1,
                         }}
                         onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
                         onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
                     >
-                        Continue with Email
+                        {isLoading ? "Signing in..." : "Continue with Email"}
                     </button>
 
                     {/* OR divider */}
@@ -359,6 +404,7 @@ export default function TalkToMyChildLogin() {
 
                     {/* Continue with Google */}
                     <button
+                        type="button"
                         style={{
                             width: "100%",
                             padding: "15px",
@@ -381,7 +427,7 @@ export default function TalkToMyChildLogin() {
                         <GoogleIcon />
                         Continue with Google
                     </button>
-                </div>
+                </form>
             </div>
         </div>
     );

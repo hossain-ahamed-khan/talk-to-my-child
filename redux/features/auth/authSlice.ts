@@ -3,27 +3,33 @@ import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 
 export type TUser = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  location: string | null;
-  role: string;
-  created_at: string;
-  fb_id: string | null;
-  profile_picture: string | null;
+    id: string;
+    email: string;
+    full_name: string;
+    credit_balance: number;
+    referral_code: string;
+};
+
+export type TAuthRole = string | null;
+
+export type TAuthPayload = {
+    user: TUser | null;
+    token: string | null;
+    role?: TAuthRole;
 };
 
 // Define a type for the slice state
 interface IAuthState {
     token: string | null;
     user: TUser | null;
+    role: TAuthRole;
 }
 
 // Define the initial state using that type
 const initialState: IAuthState = {
     token: null,
     user: null,
+    role: null,
 }
 
 export const authSlice = createSlice({
@@ -36,11 +42,13 @@ export const authSlice = createSlice({
         logout: (state) => {
             state.user = null
             state.token = null
+            state.role = null
         },
-        setUser: (state, action) => {
-            const { user, token } = action.payload
+        setUser: (state, action: PayloadAction<TAuthPayload>) => {
+            const { user, token, role } = action.payload
             state.user = user
             state.token = token
+            state.role = role ?? null
         },
     },
 })
