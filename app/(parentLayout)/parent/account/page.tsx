@@ -1,5 +1,10 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
+import { useAppSelector } from "@/redux/hooks";
+import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
+import { useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
+import { selectAuth } from "@/redux/features/auth/authSlice";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ShareIcon = () => (
@@ -130,8 +135,32 @@ const inputStyle: React.CSSProperties = {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function AccountSettings() {
-    const [fullName, setFullName] = useState("Ayesha Rahman");
-    const [email, setEmail] = useState("ayesha.rahman@email.com");
+    const auth = useAppSelector(selectAuth);
+    const { data: profile, isLoading, isError } = useGetProfileInfoQuery(undefined, {
+        skip: !auth.token,
+    });
+    const { data: childProfiles = [], isLoading: isChildrenLoading, isError: isChildrenError } = useGetChildListApiQuery(undefined, {
+        skip: !auth.token,
+    });
+    const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+
+    const effectiveProfile = profile ?? (auth.user ? {
+        id: auth.user.id,
+        full_name: auth.user.full_name,
+        email: auth.user.email,
+        profile_photo: null,
+        role: auth.role ?? "",
+        is_email_verified: false,
+        credit_balance: auth.user.credit_balance,
+        referral_code: auth.user.referral_code,
+        date_joined: "",
+        last_login: "",
+    } : null);
+
+    const selectedChild = childProfiles.find((child) => child.id === selectedChildId) ?? childProfiles[0] ?? null;
+    const childColors = ["#1a6b5a", "#1a4a6b", "#5a3d8c", "#6b5a1a"];
+    const getChildColor = (index: number) => childColors[index % childColors.length];
+    const formatChildAge = (age: number) => `${age} ${age === 1 ? "Year" : "Years"} Old`;
 
     const plans = [
         { name: "Bronze", desc: "Standard features", price: "£1.99/mo", accent: "#cd7f32", badge: null },
@@ -139,10 +168,16 @@ export default function AccountSettings() {
         { name: "Gold", desc: "Add and manage 10 child accounts", price: "£50/mo", accent: "#d4af37", badge: null },
     ];
 
-    const children = [
-        { name: "Zara Rahman", age: "6 Years & 1d", color: "#1a6b5a" },
-        { name: "Omar Rahman", age: "4 Years & 1d", color: "#1a4a6b" },
-    ];
+    const remainingCredits = effectiveProfile?.credit_balance ?? 0;
+    const referralCode = effectiveProfile?.referral_code ?? "---";
+    const isEmailVerified = effectiveProfile?.is_email_verified ?? false;
+    const lastLogin = effectiveProfile?.last_login
+        ? new Date(effectiveProfile.last_login).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        })
+        : null;
 
     return (
         <div style={{
@@ -202,6 +237,19 @@ export default function AccountSettings() {
       `}</style>
 
             <div className="account-container">
+                {isError && auth.token && (
+                    <div style={{
+                        marginBottom: 16,
+                        padding: "12px 16px",
+                        borderRadius: 10,
+                        background: "rgba(239,68,68,0.12)",
+                        border: "1px solid rgba(239,68,68,0.25)",
+                        color: "#fecaca",
+                        fontSize: 13,
+                    }}>
+                        Unable to load profile data right now.
+                    </div>
+                )}
 
                 {/* ── Row 1: Credit Status + Referral Goal ── */}
                 <div className="responsive-two-col" style={{ marginBottom: 16 }}>
@@ -210,9 +258,11 @@ export default function AccountSettings() {
                     <div style={card}>
                         <p style={{ ...label, marginBottom: 20 }}>CREDIT STATUS</p>
                         <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
-                            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8f4f8" }}>0 Remaining Credits</h2>
+                            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8f4f8" }}>
+                                {isLoading && auth.token ? "Loading credits..." : `${remainingCredits} Remaining Credits`}
+                            </h2>
                             <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                <span style={{ color: "#10b981", fontSize: 13, fontWeight: 500 }}>Share now to earn up to +2 credits</span>
+                                <span style={{ color: "#10b981", fontSize: 13, fontWeight: 500 }}>Share your referral code to earn more credits</span>
                                 <ShareIcon />
                             </div>
                         </div>
@@ -221,20 +271,15 @@ export default function AccountSettings() {
                     {/* Referral Goal */}
                     <div style={card}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                            <p style={{ ...label, marginBottom: 0 }}>REFERRAL GOAL</p>
+                            <p style={{ ...label, marginBottom: 0 }}>REFERRAL CODE</p>
                             <GiftIcon />
                         </div>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 8 }}>
-                            <span style={{ fontSize: 26, fontWeight: 700 }}>30</span>
-                            <span style={{ fontSize: 14, color: "#4a7a90" }}>/50</span>
-                            <span style={{ marginLeft: "auto", fontSize: 12, color: "#10b981", fontWeight: 600 }}>60% Complete</span>
-                        </div>
-                        {/* Progress bar */}
-                        <div style={{ background: "#1a3348", borderRadius: 99, height: 8, overflow: "hidden", marginBottom: 12 }}>
-                            <div style={{ width: "60%", height: "100%", background: "linear-gradient(90deg, #10b981, #0ea5e9)", borderRadius: 99 }} />
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 26, fontWeight: 700 }}>{referralCode}</span>
+                            <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600 }}>Active referral code</span>
                         </div>
                         <p style={{ margin: 0, fontSize: 13, color: "#8aaab8", lineHeight: 1.5 }}>
-                            You&apos;re 20 away from a month of Unlimited Calls!
+                            Share this code so friends can join and you can grow your credit balance.
                         </p>
                     </div>
                 </div>
@@ -320,15 +365,49 @@ export default function AccountSettings() {
                 {/* ── Account Settings heading + mic ── */}
                 <div className="section-header" style={{ marginBottom: 16 }}>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#e8f4f8" }}>Account Settings</h2>
-                    <button style={{
-                        width: 48, height: 48, borderRadius: "50%",
-                        background: "linear-gradient(135deg, #10b981, #0ea5e9)",
-                        border: "none",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
-                    }}>
-                        <MicIcon />
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        {effectiveProfile?.role && (
+                            <span style={{
+                                background: "rgba(14,165,233,0.12)",
+                                color: "#7dd3fc",
+                                border: "1px solid rgba(14,165,233,0.25)",
+                                borderRadius: 999,
+                                padding: "6px 10px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                textTransform: "capitalize",
+                            }}>
+                                {effectiveProfile.role}
+                            </span>
+                        )}
+                        {isEmailVerified && (
+                            <span style={{
+                                background: "rgba(16,185,129,0.12)",
+                                color: "#10b981",
+                                border: "1px solid rgba(16,185,129,0.25)",
+                                borderRadius: 999,
+                                padding: "6px 10px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                            }}>
+                                Email verified
+                            </span>
+                        )}
+                        {lastLogin && (
+                            <span style={{ fontSize: 12, color: "#8aaab8" }}>
+                                Last login {lastLogin}
+                            </span>
+                        )}
+                        <button style={{
+                            width: 48, height: 48, borderRadius: "50%",
+                            background: "linear-gradient(135deg, #10b981, #0ea5e9)",
+                            border: "none",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
+                        }}>
+                            <MicIcon />
+                        </button>
+                    </div>
                 </div>
 
                 {/* ── Bottom Row: Personal Info + Child Profiles ── */}
@@ -343,26 +422,40 @@ export default function AccountSettings() {
 
                         <div style={{ marginBottom: 16 }}>
                             <label style={label}>FULL NAME</label>
-                            <input style={inputStyle} value={fullName} onChange={e => setFullName(e.target.value)} />
+                            <input key={effectiveProfile?.id ?? "full-name"} style={inputStyle} defaultValue={effectiveProfile?.full_name ?? ""} readOnly />
                         </div>
 
                         <div style={{ marginBottom: 20 }}>
                             <label style={label}>EMAIL ADDRESS</label>
-                            <input style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} />
+                            <input key={effectiveProfile?.id ?? "email"} style={inputStyle} defaultValue={effectiveProfile?.email ?? ""} readOnly />
                         </div>
 
                         <div style={{ marginBottom: 24 }}>
                             <label style={label}>PROFILE PICTURE</label>
                             <div style={{ display: "flex", justifyContent: "center", paddingTop: 10 }}>
                                 <div style={{ position: "relative" }}>
-                                    <div style={{
-                                        width: 80, height: 80, borderRadius: "50%",
-                                        border: "2px dashed #2a4a5a",
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        background: "#091520",
-                                    }}>
-                                        <CameraIcon />
-                                    </div>
+                                    {effectiveProfile?.profile_photo ? (
+                                        <Image
+                                            src={effectiveProfile.profile_photo}
+                                            alt={effectiveProfile.full_name}
+                                            width={80}
+                                            height={80}
+                                            style={{
+                                                borderRadius: "50%",
+                                                objectFit: "cover",
+                                                border: "2px solid #1a3348",
+                                            }}
+                                        />
+                                    ) : (
+                                        <div style={{
+                                            width: 80, height: 80, borderRadius: "50%",
+                                            border: "2px dashed #2a4a5a",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            background: "#091520",
+                                        }}>
+                                            <CameraIcon />
+                                        </div>
+                                    )}
                                     <div style={{
                                         position: "absolute", bottom: 0, right: 0,
                                         width: 22, height: 22, borderRadius: "50%",
@@ -406,29 +499,115 @@ export default function AccountSettings() {
                             </button>
                         </div>
 
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {children.map((child) => (
-                                <div key={child.name} style={{
-                                    background: "#091520",
-                                    border: "1px solid #1a3348",
-                                    borderRadius: 10,
-                                    padding: "12px 16px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                        <ChildAvatar color={child.color} />
-                                        <div>
-                                            <div style={{ fontWeight: 600, fontSize: 14, color: "#e8f4f8" }}>{child.name}</div>
-                                            <div style={{ fontSize: 12, color: "#4a7a90", marginTop: 2 }}>{child.age}</div>
+                        {selectedChild && (
+                            <div style={{
+                                background: "#091520",
+                                border: "1px solid #1a3348",
+                                borderRadius: 12,
+                                padding: 16,
+                                marginBottom: 14,
+                            }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                                    <ChildAvatar color={getChildColor(childProfiles.findIndex((child) => child.id === selectedChild.id))} />
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 15, color: "#e8f4f8" }}>{selectedChild.name}</div>
+                                        <div style={{ fontSize: 12, color: "#4a7a90", marginTop: 2 }}>{selectedChild.email}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                                    <div>
+                                        <div style={{ ...label, marginBottom: 4 }}>AGE</div>
+                                        <div style={{ fontSize: 13, color: "#c8dde8", fontWeight: 600 }}>{formatChildAge(selectedChild.age)}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ ...label, marginBottom: 4 }}>STATUS</div>
+                                        <div style={{ fontSize: 13, color: selectedChild.is_active ? "#10b981" : "#8aaab8", fontWeight: 600 }}>
+                                            {selectedChild.is_active ? "Active" : "Inactive"}
                                         </div>
                                     </div>
-                                    <button style={{ background: "none", border: "none", padding: 4 }}>
-                                        <EditIcon />
-                                    </button>
                                 </div>
-                            ))}
+
+                                <div style={{ marginTop: 12 }}>
+                                    <div style={{ ...label, marginBottom: 6 }}>FOCUS AREAS</div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        {selectedChild.focus_area.length > 0 ? selectedChild.focus_area.map((area) => (
+                                            <span key={area} style={{
+                                                background: "rgba(16,185,129,0.12)",
+                                                color: "#10b981",
+                                                border: "1px solid rgba(16,185,129,0.18)",
+                                                borderRadius: 999,
+                                                padding: "5px 10px",
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                            }}>
+                                                {area}
+                                            </span>
+                                        )) : (
+                                            <span style={{ fontSize: 12, color: "#8aaab8" }}>No focus areas added yet.</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {isChildrenError && auth.token && (
+                            <div style={{
+                                marginBottom: 12,
+                                padding: "10px 12px",
+                                borderRadius: 10,
+                                background: "rgba(239,68,68,0.12)",
+                                border: "1px solid rgba(239,68,68,0.18)",
+                                color: "#fecaca",
+                                fontSize: 12,
+                            }}>
+                                Unable to load child profiles right now.
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {isChildrenLoading && auth.token ? (
+                                <div style={{ fontSize: 13, color: "#8aaab8" }}>Loading child profiles...</div>
+                            ) : childProfiles.length > 0 ? childProfiles.map((child, index) => {
+                                const isSelected = child.id === selectedChildId;
+                                return (
+                                    <button
+                                        key={child.id}
+                                        type="button"
+                                        onClick={() => setSelectedChildId(child.id)}
+                                        style={{
+                                            background: "#091520",
+                                            border: isSelected ? "1px solid #10b981" : "1px solid #1a3348",
+                                            borderRadius: 10,
+                                            padding: "12px 16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            width: "100%",
+                                            textAlign: "left",
+                                        }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                                            <ChildAvatar color={getChildColor(index)} />
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: 14, color: "#e8f4f8" }}>{child.name}</div>
+                                                <div style={{ fontSize: 12, color: "#4a7a90", marginTop: 2 }}>{formatChildAge(child.age)}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                            {isSelected && (
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                                    Selected
+                                                </span>
+                                            )}
+                                            <span style={{ background: "none", border: "none", padding: 4, display: "flex" }}>
+                                                <EditIcon />
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            }) : (
+                                <div style={{ fontSize: 13, color: "#8aaab8" }}>No child profiles found.</div>
+                            )}
                         </div>
                     </div>
                 </div>
