@@ -1,799 +1,684 @@
 "use client";
 
+import { useRef, useState, type ChangeEvent } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { selectToken } from "@/redux/features/auth/authSlice";
+import { useAppSelector } from "@/redux/hooks";
+import {
+    type CharacterProfile,
+    useGetCharacterListApiQuery,
+} from "@/redux/features/parent/characters/characterList";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 
-type VoiceGender = "Male" | "Female" | "Neutral";
-type Gender = "Male" | "Female" | "Other";
+type CharacterFormState = {
+    name: string;
+    gender: string;
+    category: string;
+    role: string;
+    age: string;
+    description: string;
+    profile_image: string | null;
+    voice_sample: string | null;
+};
 
-export default function AddNewCharacter() {
-    const [characterName, setCharacterName] = useState("Dad");
-    const [gender, setGender] = useState<Gender>("Male");
-    const [voiceGender, setVoiceGender] = useState<VoiceGender>("Male");
-    const [approximateAge, setApproximateAge] = useState("35");
-    const [personalityDescription, setPersonalityDescription] = useState(
-        "Warm, encouraging, and likes to tell dad jokes. Always starts conversations with 'Hey champ!'."
-    );
-    const [characterImage, setCharacterImage] = useState<string | null>(null);
-    const [showChildAccountView, setShowChildAccountView] = useState(false);
-    const [viewportWidth, setViewportWidth] = useState(1440);
+const defaultCharacterForm: CharacterFormState = {
+    name: "",
+    gender: "Female",
+    category: "Creative Arts & Nature",
+    role: "User Companion / Storyteller Buddy",
+    age: "9",
+    description: "",
+    profile_image: null,
+    voice_sample: null,
+};
+
+export default function Characters() {
+    const token = useAppSelector(selectToken);
+    const { data: fetchedCharacters = [], isLoading, isError } = useGetCharacterListApiQuery(undefined, {
+        skip: !token,
+    });
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [localCharacters, setLocalCharacters] = useState<CharacterProfile[]>([]);
+    const [form, setForm] = useState<CharacterFormState>(defaultCharacterForm);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        const updateViewportWidth = () => setViewportWidth(window.innerWidth);
-        updateViewportWidth();
-        window.addEventListener("resize", updateViewportWidth);
-        return () => window.removeEventListener("resize", updateViewportWidth);
-    }, []);
+    const characters = [...localCharacters, ...fetchedCharacters];
 
-    const isTablet = viewportWidth <= 1024;
-    const isMobile = viewportWidth <= 768;
+    const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => setCharacterImage(reader.result as string);
-            reader.readAsDataURL(file);
+        const reader = new FileReader();
+        reader.onload = () => {
+            setForm((current) => ({ ...current, profile_image: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const openCreateModal = () => {
+        setForm(defaultCharacterForm);
+        setIsCreateModalOpen(true);
+    };
+
+    const closeCreateModal = () => {
+        setIsCreateModalOpen(false);
+        setForm(defaultCharacterForm);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
         }
     };
 
-    const handleCreate = () => {
-        setShowChildAccountView(true);
+    const handleCreateCharacter = () => {
+        const now = new Date().toISOString();
+
+        setLocalCharacters((current) => [
+            {
+                id: Date.now(),
+                name: form.name.trim() || "New Character",
+                age: Number(form.age) || 0,
+                gender: form.gender.trim(),
+                category: form.category.trim(),
+                role: form.role.trim(),
+                description: form.description.trim(),
+                profile_image: form.profile_image,
+                voice_sample: form.voice_sample,
+                created_at: now,
+                updated_at: now,
+                created_by: token ?? "",
+            },
+            ...current,
+        ]);
+
+        closeCreateModal();
     };
-
-    const handleCancel = () => {
-        setCharacterName("");
-        setGender("Male");
-        setVoiceGender("Male");
-        setApproximateAge("");
-        setPersonalityDescription("");
-        setCharacterImage(null);
-    };
-
-    const handleBackToCharacter = () => {
-        setShowChildAccountView(false);
-    };
-
-    const handleChildCreate = () => {
-        alert(`Child account for "${characterName || "your child"}" created!`);
-    };
-
-    if (showChildAccountView) {
-        return (
-            <div style={{ ...styles.page, padding: isMobile ? "12px" : isTablet ? "18px" : "24px" }}>
-                <div style={styles.childAccountLayout}>
-                    <div style={styles.childAccountLeft}>
-                        <div style={styles.header}>
-                            <h1 style={styles.title}>Add New Child Account</h1>
-                            <p style={styles.subtitle}>Enter your child&apos;s details below.</p>
-                        </div>
-
-                        <h2 style={styles.sectionTitle}>Child Information</h2>
-
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Child Name</label>
-                                <input
-                                    style={styles.input}
-                                    value={characterName}
-                                    onChange={(e) => setCharacterName(e.target.value)}
-                                    placeholder="George Blaze"
-                                />
-                            </div>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Age</label>
-                                <div style={styles.selectWrapper}>
-                                    <select
-                                        style={styles.select}
-                                        value={approximateAge || "12"}
-                                        onChange={(e) => setApproximateAge(e.target.value)}
-                                    >
-                                        {Array.from({ length: 16 }, (_, i) => i + 5).map((age) => (
-                                            <option key={age} value={String(age)}>
-                                                {age}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <span style={styles.selectArrow}>▾</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Username</label>
-                                <input style={styles.input} defaultValue="Dad" />
-                            </div>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Email</label>
-                                <input style={styles.input} defaultValue="Dad" />
-                            </div>
-                        </div>
-
-                        <div style={styles.fieldGroup}>
-                            <label style={styles.label}>Password</label>
-                            <div style={styles.passwordField}>
-                                <input style={styles.passwordInput} type="password" defaultValue="password" />
-                                <span style={styles.passwordIcon}>◌</span>
-                            </div>
-                        </div>
-
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row", marginTop: "20px" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Focus Subjects (Optional)</label>
-                                <p style={styles.helperText}>
-                                    Select areas you want the AI to emphasize during conversations.
-                                </p>
-                                <div style={styles.chipsBox}>
-                                    {["Math", "Science", "English"].map((item) => (
-                                        <span key={item} style={styles.chip}>
-                                            {item} x
-                                        </span>
-                                    ))}
-                                    <span style={styles.chipPlaceholder}>Add subject...</span>
-                                </div>
-                            </div>
-
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Personality (Optional)</label>
-                                <p style={styles.helperText}>Define the behavioral traits the AI should adapt to.</p>
-                                <div style={styles.chipsBox}>
-                                    {["Creative", "Curious", "Energetic"].map((item) => (
-                                        <span key={item} style={styles.chip}>
-                                            {item} x
-                                        </span>
-                                    ))}
-                                    <span style={styles.chipPlaceholder}>Add trait...</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Interests (Optional)</label>
-                                <p style={styles.helperText}>Topics that get your child excited and engaged.</p>
-                                <input style={styles.input} placeholder="e.g. Space, Dinosaurs..." />
-                            </div>
-
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Dislikes (Optional)</label>
-                                <p style={styles.helperText}>Avoid these topics to keep the experience positive.</p>
-                                <input style={styles.input} placeholder="e.g. Loud noises, Broccoli..." />
-                            </div>
-                        </div>
-
-                        <div style={{ ...styles.buttonRow, flexDirection: isMobile ? "column" : "row" }}>
-                            <button
-                                style={{ ...styles.createBtn, width: isMobile ? "100%" : "auto" }}
-                                onClick={handleChildCreate}
-                            >
-                                Create Child
-                            </button>
-                            <button
-                                style={{ ...styles.cancelBtn, width: isMobile ? "100%" : "auto" }}
-                                onClick={handleBackToCharacter}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style={styles.childAccountRight}>
-                        <h2 style={styles.rightTitle}>Upload Child Image (Optional)</h2>
-                        <div style={styles.childImageFrame} onClick={() => fileInputRef.current?.click()}>
-                            {characterImage ? (
-                                <Image
-                                    src={characterImage}
-                                    alt="Child avatar"
-                                    width={90}
-                                    height={90}
-                                    style={styles.childPreviewImage}
-                                />
-                            ) : (
-                                <div style={styles.imagePlaceholder}>
-                                    <span style={styles.cameraIcon}>📷</span>
-                                    <div style={styles.plusBadge}>+</div>
-                                </div>
-                            )}
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                style={{ display: "none" }}
-                                onChange={handleImageUpload}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <button
-                    style={{
-                        ...styles.fab,
-                        right: isMobile ? "14px" : "28px",
-                        bottom: isMobile ? "14px" : "28px",
-                        width: isMobile ? "48px" : "52px",
-                        height: isMobile ? "48px" : "52px",
-                    }}
-                >
-                    🎤
-                </button>
-            </div>
-        );
-    }
 
     return (
-        <div style={{ ...styles.page, padding: isMobile ? "12px" : isTablet ? "18px" : "24px" }}>
-            <div style={{ ...styles.container, flexDirection: isTablet ? "column" : "row" }}>
-                {/* Left Panel */}
-                <div style={styles.leftPanel}>
-                    <div style={styles.header}>
-                        <h1 style={styles.title}>Add New Character</h1>
+        <div style={styles.pageShell}>
+            <div style={styles.pageFrame}>
+                <div style={styles.heroBar}>
+                    <div>
+                        <p style={styles.kicker}>Parent dashboard</p>
+                        <h1 style={styles.title}>Characters</h1>
                         <p style={styles.subtitle}>
-                            Create a unique profile and voice for your child&apos;s character.
+                            Manage the AI companions your child can talk to, all in one place.
                         </p>
                     </div>
 
-                    <div style={styles.section}>
-                        <h2 style={styles.sectionTitle}>Character Information</h2>
+                    <Button onClick={openCreateModal} style={styles.primaryButton}>
+                        Add New Character
+                    </Button>
+                </div>
 
-                        {/* Row: Name + Gender */}
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Character Name</label>
-                                <input
-                                    style={styles.input}
-                                    value={characterName}
-                                    onChange={(e) => setCharacterName(e.target.value)}
-                                    placeholder="Enter name"
-                                />
-                            </div>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Gender</label>
-                                <div style={styles.selectWrapper}>
-                                    <select
-                                        style={styles.select}
-                                        value={gender}
-                                        onChange={(e) => setGender(e.target.value as Gender)}
-                                    >
-                                        <option>Male</option>
-                                        <option>Female</option>
-                                        <option>Other</option>
-                                    </select>
-                                    <span style={styles.selectArrow}>▾</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Row: Voice Gender + Approximate Age */}
-                        <div style={{ ...styles.row, flexDirection: isMobile ? "column" : "row" }}>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Voice Gender</label>
-                                <div style={styles.toggleGroup}>
-                                    {(["Male", "Female", "Neutral"] as VoiceGender[]).map((v) => (
-                                        <button
-                                            key={v}
-                                            style={
-                                                voiceGender === v
-                                                    ? { ...styles.toggleBtn, ...styles.toggleBtnActive }
-                                                    : styles.toggleBtn
-                                            }
-                                            onClick={() => setVoiceGender(v)}
-                                        >
-                                            {v}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div style={styles.fieldGroup}>
-                                <label style={styles.label}>Approximate Age</label>
-                                <input
-                                    style={styles.input}
-                                    value={approximateAge}
-                                    onChange={(e) => setApproximateAge(e.target.value)}
-                                    placeholder="35"
-                                    type="number"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Personality Description */}
-                        <div style={styles.fieldGroup}>
-                            <label style={styles.label}>Personality Description</label>
-                            <textarea
-                                style={styles.textarea}
-                                value={personalityDescription}
-                                onChange={(e) => setPersonalityDescription(e.target.value)}
-                                placeholder="Describe the character's personality..."
-                                rows={4}
-                            />
-                        </div>
-
-                        {/* Buttons */}
-                        <div style={{ ...styles.buttonRow, flexDirection: isMobile ? "column" : "row" }}>
-                            <button
-                                style={{ ...styles.createBtn, width: isMobile ? "100%" : "auto" }}
-                                onClick={handleCreate}
-                            >
-                                Create Character
-                            </button>
-                            <button
-                                style={{ ...styles.cancelBtn, width: isMobile ? "100%" : "auto" }}
-                                onClick={handleCancel}
-                            >
-                                Cancel
-                            </button>
-                        </div>
+                <div style={styles.summaryRow}>
+                    <div style={styles.summaryCard}>
+                        <span style={styles.summaryLabel}>Total characters</span>
+                        <strong style={styles.summaryValue}>{characters.length.toString().padStart(2, "0")}</strong>
+                    </div>
+                    <div style={styles.summaryCard}>
+                        <span style={styles.summaryLabel}>Loaded from API</span>
+                        <strong style={styles.summaryValue}>{fetchedCharacters.length.toString().padStart(2, "0")}</strong>
+                    </div>
+                    <div style={styles.summaryCard}>
+                        <span style={styles.summaryLabel}>Drafts added locally</span>
+                        <strong style={styles.summaryValue}>{localCharacters.length.toString().padStart(2, "0")}</strong>
                     </div>
                 </div>
 
-                {/* Right Panel */}
-                <div
-                    style={{
-                        ...styles.rightPanel,
-                        width: "100%",
-                        maxWidth: isTablet ? "100%" : "360px",
-                        alignItems: "stretch",
-                    }}
-                >
-                    <h2 style={styles.rightTitle}>Upload Character Image (Optional)</h2>
-
-                    <div style={styles.imageUploadArea} onClick={() => fileInputRef.current?.click()}>
-                        {characterImage ? (
-                            <Image
-                                src={characterImage}
-                                alt="Character"
-                                width={110}
-                                height={110}
-                                style={styles.previewImage}
-                            />
-                        ) : (
-                            <div style={styles.imagePlaceholder}>
-                                <span style={styles.cameraIcon}>📷</span>
-                                <div style={styles.plusBadge}>+</div>
-                            </div>
-                        )}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: "none" }}
-                            onChange={handleImageUpload}
-                        />
+                {!token ? (
+                    <div style={styles.stateCard}>
+                        <h2 style={styles.stateTitle}>Sign in to load characters</h2>
+                        <p style={styles.stateText}>
+                            The character list is tied to the authenticated parent account.
+                        </p>
                     </div>
-
-                    <div style={styles.voiceSection}>
-                        <p style={styles.voiceSectionLabel}>VOICE SOURCE METHODS</p>
-
-                        {[
-                            {
-                                icon: "🎙️",
-                                label: "Press to record",
-                                sub: "DIRECT RECORDING",
-                            },
-                            {
-                                icon: "🔗",
-                                label: "Paste YouTube link",
-                                sub: "WEB AUDIO SOURCE",
-                            },
-                            {
-                                icon: "📄",
-                                label: "Choose File",
-                                sub: "SELECT FROM DEVICE",
-                            },
-                        ].map((item) => (
-                            <button key={item.label} style={styles.voiceOption}>
-                                <span style={styles.voiceIcon}>{item.icon}</span>
-                                <div style={styles.voiceTextGroup}>
-                                    <span style={styles.voiceLabel}>{item.label}</span>
-                                    <span style={styles.voiceSub}>{item.sub}</span>
-                                </div>
-                                <span style={styles.voiceArrow}>›</span>
-                            </button>
+                ) : isError ? (
+                    <div style={styles.stateCard}>
+                        <h2 style={styles.stateTitle}>Unable to load characters</h2>
+                        <p style={styles.stateText}>Check the API connection and try again.</p>
+                    </div>
+                ) : isLoading ? (
+                    <div style={styles.grid}>
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <div key={index} style={styles.skeletonCard} />
                         ))}
                     </div>
-                </div>
+                ) : characters.length > 0 ? (
+                    <div style={styles.grid}>
+                        {characters.map((character) => (
+                            <article key={`${character.id}-${character.name}`} style={styles.card}>
+                                <div style={styles.cardTop}>
+                                    <div style={styles.avatarWrap}>
+                                        {character.profile_image ? (
+                                            <Image
+                                                src={character.profile_image}
+                                                alt={character.name}
+                                                style={styles.avatarImage}
+                                            />
+                                        ) : (
+                                            <span style={styles.avatarFallback}>{getInitials(character.name)}</span>
+                                        )}
+                                    </div>
+
+                                    <div style={styles.cardMeta}>
+                                        <h2 style={styles.cardTitle}>{character.name}</h2>
+                                        <p style={styles.cardSubtitle}>
+                                            {character.gender} · {character.age} years old
+                                        </p>
+                                        <div style={styles.tagRow}>
+                                            <span style={styles.tag}>{character.category}</span>
+                                            <span style={styles.tagSoft}>{character.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p style={styles.cardDescription}>{character.description}</p>
+
+                                <div style={styles.cardFooter}>
+                                    <span style={styles.metaLine}>Created {formatDate(character.created_at)}</span>
+                                    <span style={styles.metaLine}>Updated {formatDate(character.updated_at)}</span>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                ) : (
+                    <div style={styles.stateCard}>
+                        <h2 style={styles.stateTitle}>No characters yet</h2>
+                        <p style={styles.stateText}>
+                            Create your first character to start building a companion profile.
+                        </p>
+                        <Button onClick={openCreateModal} style={styles.inlineButton}>
+                            Add New Character
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            {/* Floating mic button */}
-            <button
-                style={{
-                    ...styles.fab,
-                    right: isMobile ? "14px" : "28px",
-                    bottom: isMobile ? "14px" : "28px",
-                    width: isMobile ? "48px" : "52px",
-                    height: isMobile ? "48px" : "52px",
-                }}
-            >
-                🎤
-            </button>
+            {isCreateModalOpen ? (
+                <div style={styles.modalOverlay} onClick={closeCreateModal}>
+                    <div style={styles.modal} onClick={(event) => event.stopPropagation()}>
+                        <div style={styles.modalHeader}>
+                            <div>
+                                <p style={styles.kicker}>New character</p>
+                                <h2 style={styles.modalTitle}>Add New Character</h2>
+                            </div>
+                            <button style={styles.closeButton} onClick={closeCreateModal} aria-label="Close modal">
+                                ×
+                            </button>
+                        </div>
+
+                        <div style={styles.modalBody}>
+                            <div style={styles.uploadColumn}>
+                                <div style={styles.uploadBox} onClick={() => fileInputRef.current?.click()}>
+                                    {form.profile_image ? (
+                                        <Image
+                                            src={form.profile_image}
+                                            alt="Preview"
+                                            width={180}
+                                            height={180}
+                                            style={styles.uploadImage}
+                                        />
+                                    ) : (
+                                        <div style={styles.uploadPlaceholder}>
+                                            <span style={styles.uploadIcon}>+</span>
+                                            <span style={styles.uploadText}>Add image</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: "none" }}
+                                    onChange={handleImageUpload}
+                                />
+                                <p style={styles.helperText}>Optional profile image for the character card.</p>
+                            </div>
+
+                            <div style={styles.formGrid}>
+                                <label style={styles.field}>
+                                    <span style={styles.label}>Character name</span>
+                                    <Input
+                                        value={form.name}
+                                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                                        placeholder="Zara Ahmed"
+                                    />
+                                </label>
+
+                                <label style={styles.field}>
+                                    <span style={styles.label}>Gender</span>
+                                    <Input
+                                        value={form.gender}
+                                        onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}
+                                        placeholder="Female"
+                                    />
+                                </label>
+
+                                <label style={styles.field}>
+                                    <span style={styles.label}>Category</span>
+                                    <Input
+                                        value={form.category}
+                                        onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+                                        placeholder="Creative Arts & Nature"
+                                    />
+                                </label>
+
+                                <label style={styles.field}>
+                                    <span style={styles.label}>Role</span>
+                                    <Input
+                                        value={form.role}
+                                        onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
+                                        placeholder="User Companion / Storyteller Buddy"
+                                    />
+                                </label>
+
+                                <label style={styles.field}>
+                                    <span style={styles.label}>Age</span>
+                                    <Input
+                                        type="number"
+                                        value={form.age}
+                                        onChange={(event) => setForm((current) => ({ ...current, age: event.target.value }))}
+                                        placeholder="9"
+                                    />
+                                </label>
+
+                                <label style={{ ...styles.field, gridColumn: "1 / -1" }}>
+                                    <span style={styles.label}>Description</span>
+                                    <textarea
+                                        style={styles.textarea}
+                                        value={form.description}
+                                        onChange={(event) =>
+                                            setForm((current) => ({ ...current, description: event.target.value }))
+                                        }
+                                        placeholder="Describe the character's personality and speaking style."
+                                        rows={5}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style={styles.modalActions}>
+                            <Button variant="outline" onClick={closeCreateModal} style={styles.actionButton}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreateCharacter} disabled={!form.name.trim()} style={styles.actionButton}>
+                                Create Character
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
 
+function getInitials(name: string) {
+    return name
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("");
+}
+
+function formatDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "just now";
+    }
+
+    return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+}
+
 const styles: Record<string, React.CSSProperties> = {
-    page: {
+    pageShell: {
         minHeight: "100vh",
-        backgroundColor: "#0f172a",
-        display: "flex",
-        alignItems: "stretch",
-        justifyContent: "flex-start",
-        fontFamily: "'Segoe UI', sans-serif",
+        padding: "clamp(16px, 2.5vw, 28px)",
+        background: "#091520",
         boxSizing: "border-box",
-        position: "relative",
-        width: "100%",
     },
-    container: {
-        display: "flex",
-        gap: "24px",
+    pageFrame: {
         width: "100%",
-        maxWidth: "100%",
-        alignItems: "flex-start",
+        maxWidth: "1320px",
+        margin: "0 auto",
+        color: "#e8f4f8",
+        fontFamily: "var(--font-sans)",
     },
-    childAccountLayout: {
+    heroBar: {
         display: "flex",
-        gap: "24px",
-        width: "100%",
-        alignItems: "flex-start",
+        alignItems: "flex-end",
+        justifyContent: "space-between",
+        gap: "16px",
+        marginBottom: "18px",
         flexWrap: "wrap",
     },
-    childAccountLeft: {
-        flex: "1 1 720px",
-        minWidth: "320px",
-    },
-    childAccountRight: {
-        flex: "0 0 360px",
-        width: "100%",
-        maxWidth: "360px",
-        border: "1px solid #1e2a35",
-        borderRadius: "14px",
-        padding: "28px",
-        backgroundColor: "rgba(7,16,39,0.55)",
-        boxSizing: "border-box",
-        minHeight: "236px",
-    },
-    leftPanel: {
-        flex: "1 1 0",
-        width: "100%",
-        backgroundColor: "transparent",
-        borderRadius: "16px",
-        padding: "clamp(16px, 2.4vw, 32px)",
-        border: "1px solid #1e2a35",
-        boxSizing: "border-box",
-    },
-    header: {
-        marginBottom: "28px",
+    kicker: {
+        color: "#7ca4af",
+        fontSize: "11px",
+        textTransform: "uppercase",
+        letterSpacing: "0.22em",
+        margin: "0 0 8px",
     },
     title: {
         color: "#ffffff",
-        fontSize: "26px",
+        fontSize: "clamp(28px, 4vw, 42px)",
         fontWeight: 700,
-        margin: "0 0 6px",
-    },
-    subtitle: {
-        color: "#6b7f8e",
-        fontSize: "14px",
+        lineHeight: 1.05,
         margin: 0,
     },
-    section: {},
-    sectionTitle: {
+    subtitle: {
+        color: "#8aaab8",
+        fontSize: "14px",
+        margin: "10px 0 0",
+        maxWidth: "720px",
+        lineHeight: 1.6,
+    },
+    primaryButton: {
+        borderRadius: "999px",
+        padding: "0 18px",
+        backgroundColor: "#11b780",
         color: "#ffffff",
-        fontSize: "16px",
-        fontWeight: 600,
-        marginBottom: "20px",
+        boxShadow: "0 10px 24px rgba(17,183,128,0.18)",
     },
-    row: {
-        display: "flex",
-        gap: "16px",
-        marginBottom: "20px",
+    inlineButton: {
+        borderRadius: "999px",
+        padding: "0 18px",
+        marginTop: "10px",
+    },
+    summaryRow: {
         width: "100%",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: "12px",
+        marginBottom: "20px",
     },
-    fieldGroup: {
-        flex: 1,
+    summaryCard: {
+        border: "1px solid #1a3348",
+        borderRadius: "18px",
+        background: "#0d1e2d",
+        padding: "16px 18px",
+    },
+    summaryLabel: {
+        display: "block",
+        color: "#4a7a90",
+        fontSize: "12px",
+        marginBottom: "8px",
+    },
+    summaryValue: {
+        color: "#e8f4f8",
+        fontSize: "26px",
+        fontWeight: 700,
+    },
+    stateCard: {
+        border: "1px solid #1a3348",
+        borderRadius: "22px",
+        background: "#0d1e2d",
+        padding: "28px",
+    },
+    stateTitle: {
+        margin: "0 0 8px",
+        color: "#e8f4f8",
+        fontSize: "20px",
+    },
+    stateText: {
+        margin: 0,
+        color: "#8aaab8",
+        lineHeight: 1.6,
+    },
+    grid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: "16px",
+        alignItems: "stretch",
+    },
+    card: {
+        border: "1px solid #1a3348",
+        borderRadius: "22px",
+        background: "#0d1e2d",
+        padding: "18px",
+    },
+    cardTop: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "14px",
+        marginBottom: "14px",
+    },
+    avatarWrap: {
+        width: "68px",
+        height: "68px",
+        borderRadius: "18px",
+        overflow: "hidden",
+        flexShrink: 0,
+        border: "1px solid rgba(17,183,128,0.22)",
+        background: "linear-gradient(145deg, rgba(17,183,128,0.18), rgba(17,183,128,0.05))",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    avatarImage: {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+    },
+    avatarFallback: {
+        border: "1px solid #1a3348",
+        background: "#091520",
+        fontSize: "20px",
+        letterSpacing: "0.06em",
+    },
+    cardMeta: {
+        minWidth: 0,
+        color: "#e8f4f8",
+    },
+    cardTitle: {
+        margin: 0,
+        color: "#e8f4f8",
+        fontSize: "18px",
+        fontWeight: 700,
+    },
+    cardSubtitle: {
+        margin: "6px 0 10px",
+        color: "#4a7a90",
+        fontSize: "13px",
+    },
+    tagRow: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "8px",
+    },
+    tag: {
+        backgroundColor: "rgba(17,183,128,0.14)",
+        color: "#7df0c3",
+        borderRadius: "999px",
+        padding: "6px 10px",
+        fontSize: "12px",
+        fontWeight: 600,
+    },
+    tagSoft: {
+        backgroundColor: "rgba(74,122,144,0.12)",
+        color: "#8aaab8",
+        borderRadius: "999px",
+        padding: "6px 10px",
+        fontSize: "12px",
+        fontWeight: 500,
+    },
+    cardDescription: {
+        margin: 0,
+        color: "#c8dde8",
+        fontSize: "14px",
+        lineHeight: 1.65,
+    },
+    cardFooter: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: "10px",
+        flexWrap: "wrap",
+        marginTop: "16px",
+        paddingTop: "14px",
+        borderTop: "1px solid #1a3348",
+    },
+    metaLine: {
+        color: "#8aaab8",
+        fontSize: "12px",
+    },
+    skeletonCard: {
+        minHeight: "220px",
+        borderRadius: "22px",
+        border: "1px solid #1a3348",
+        background:
+            "linear-gradient(90deg, #0d1e2d 25%, #122032 37%, #0d1e2d 63%)",
+        backgroundSize: "400% 100%",
+    },
+    modalOverlay: {
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(3, 9, 15, 0.72)",
+        backdropFilter: "blur(10px)",
+        display: "grid",
+        placeItems: "center",
+        padding: "18px",
+        zIndex: 50,
+    },
+    modal: {
+        width: "min(980px, 100%)",
+        borderRadius: "28px",
+        border: "1px solid #1a3348",
+        background: "#0d1e2d",
+        boxShadow: "0 36px 100px rgba(0,0,0,0.35)",
+        padding: "22px",
+    },
+    modalHeader: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: "16px",
+        marginBottom: "18px",
+    },
+    modalTitle: {
+        color: "#ffffff",
+        margin: 0,
+        fontSize: "24px",
+        fontWeight: 700,
+    },
+    closeButton: {
+        width: "38px",
+        height: "38px",
+        borderRadius: "999px",
+        border: "1px solid #1a3348",
+        backgroundColor: "#091520",
+        color: "#e8f4f8",
+        fontSize: "22px",
+        lineHeight: 1,
+        cursor: "pointer",
+    },
+    modalBody: {
+        display: "flex",
+        gap: "18px",
+        flexWrap: "wrap",
+    },
+    uploadColumn: {
+        flex: "0 0 220px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "10px",
+    },
+    uploadBox: {
+        width: "180px",
+        height: "180px",
+        borderRadius: "24px",
+        border: "1px dashed #2a4a5a",
+        background: "#091520",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        overflow: "hidden",
+        boxSizing: "border-box",
+    },
+    uploadImage: {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+    },
+    uploadPlaceholder: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "10px",
+        color: "#8aaab8",
+    },
+    uploadIcon: {
+        width: "54px",
+        height: "54px",
+        borderRadius: "50%",
+        border: "1px solid rgba(125,240,195,0.25)",
+        display: "grid",
+        placeItems: "center",
+        fontSize: "28px",
+        color: "#7df0c3",
+    },
+    uploadText: {
+        fontSize: "13px",
+        fontWeight: 600,
+    },
+    helperText: {
+        margin: 0,
+        color: "#8aaab8",
+        fontSize: "12px",
+        textAlign: "center",
+        lineHeight: 1.6,
+    },
+    formGrid: {
+        flex: "1 1 420px",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: "14px",
+        alignContent: "start",
+    },
+    field: {
         display: "flex",
         flexDirection: "column",
         gap: "8px",
     },
     label: {
-        color: "#8a9bb0",
-        fontSize: "13px",
-        fontWeight: 500,
-    },
-    input: {
-        backgroundColor: "transparent",
-        border: "1px solid #1e2a35",
-        borderRadius: "8px",
-        padding: "12px 14px",
-        color: "#ffffff",
-        fontSize: "14px",
-        outline: "none",
-        width: "100%",
-        boxSizing: "border-box",
-    },
-    helperText: {
-        margin: "0 0 8px",
-        color: "#5b6d84",
-        fontSize: "13px",
-    },
-    selectWrapper: {
-        position: "relative",
-    },
-    select: {
-        width: "100%",
-        backgroundColor: "transparent",
-        border: "1px solid #1e2a35",
-        borderRadius: "8px",
-        padding: "12px 36px 12px 14px",
-        color: "#ffffff",
-        fontSize: "14px",
-        appearance: "none",
-        outline: "none",
-        cursor: "pointer",
-    },
-    selectArrow: {
-        position: "absolute",
-        right: "12px",
-        top: "50%",
-        transform: "translateY(-50%)",
-        color: "#8a9bb0",
-        pointerEvents: "none",
-        fontSize: "16px",
-    },
-    passwordField: {
-        position: "relative",
-        width: "100%",
-    },
-    passwordInput: {
-        backgroundColor: "transparent",
-        border: "1px solid #1e2a35",
-        borderRadius: "999px",
-        padding: "12px 42px 12px 14px",
-        color: "#ffffff",
-        fontSize: "14px",
-        outline: "none",
-        width: "100%",
-        boxSizing: "border-box",
-    },
-    passwordIcon: {
-        position: "absolute",
-        top: "50%",
-        right: "14px",
-        transform: "translateY(-50%)",
-        color: "#5b6d84",
-        fontSize: "13px",
-    },
-    chipsBox: {
-        minHeight: "74px",
-        border: "1px solid #1e2a35",
-        borderRadius: "18px",
-        padding: "12px",
-        display: "flex",
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-        gap: "8px",
-    },
-    chip: {
-        backgroundColor: "rgba(8,177,130,0.12)",
-        color: "#00c39a",
-        padding: "7px 12px",
-        borderRadius: "999px",
+        color: "#4a7a90",
         fontSize: "13px",
         fontWeight: 600,
-    },
-    chipPlaceholder: {
-        color: "#8a9bb0",
-        fontSize: "14px",
-        alignSelf: "center",
-        marginLeft: "4px",
-    },
-    toggleGroup: {
-        display: "flex",
-        gap: "8px",
-        flexWrap: "wrap",
-    },
-    toggleBtn: {
-        padding: "9px 18px",
-        borderRadius: "999px",
-        border: "1px solid #1e2a35",
-        backgroundColor: "transparent",
-        color: "#8a9bb0",
-        fontSize: "13px",
-        cursor: "pointer",
-        fontWeight: 500,
-        flex: "1 1 auto",
-    },
-    toggleBtnActive: {
-        backgroundColor: "#11b780",
-        borderColor: "#11b780",
-        color: "#ffffff",
     },
     textarea: {
-        backgroundColor: "transparent",
-        border: "1px solid #1e2a35",
-        borderRadius: "8px",
-        padding: "12px 14px",
-        color: "#ffffff",
-        fontSize: "14px",
-        outline: "none",
         width: "100%",
+        minHeight: "140px",
         resize: "vertical",
+        borderRadius: "14px",
+        border: "1px solid #1a3348",
+        backgroundColor: "#091520",
+        color: "#e8f4f8",
+        padding: "12px 14px",
+        fontSize: "14px",
+        lineHeight: 1.6,
         boxSizing: "border-box",
-        lineHeight: "1.5",
+        outline: "none",
         fontFamily: "inherit",
     },
-    buttonRow: {
+    modalActions: {
         display: "flex",
+        justifyContent: "flex-end",
         gap: "12px",
-        marginTop: "28px",
+        marginTop: "18px",
+        flexWrap: "wrap",
     },
-    createBtn: {
-        backgroundColor: "#11b780",
-        color: "#ffffff",
-        border: "none",
+    actionButton: {
         borderRadius: "999px",
-        padding: "13px 28px",
-        fontSize: "14px",
-        fontWeight: 600,
-        cursor: "pointer",
-    },
-    cancelBtn: {
-        backgroundColor: "#1e2a35",
-        color: "#ffffff",
-        border: "none",
-        borderRadius: "999px",
-        padding: "13px 28px",
-        fontSize: "14px",
-        fontWeight: 600,
-        cursor: "pointer",
-    },
-
-    // Right Panel
-    rightPanel: {
-        flex: "1 1 320px",
-        backgroundColor: "transparent",
-        borderRadius: "16px",
-        padding: "clamp(16px, 2.1vw, 28px)",
-        border: "1px solid #1e2a35",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "24px",
-        boxSizing: "border-box",
-    },
-    rightTitle: {
-        color: "#ffffff",
-        fontSize: "15px",
-        fontWeight: 600,
-        textAlign: "center",
-        margin: 0,
-    },
-    childImageFrame: {
-        marginTop: "32px",
-        width: "100%",
-        minHeight: "160px",
-        borderRadius: "12px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-    },
-    childPreviewImage: {
-        width: "90px",
-        height: "90px",
-        borderRadius: "50%",
-        objectFit: "cover",
-    },
-    imageUploadArea: {
-        width: "110px",
-        height: "110px",
-        borderRadius: "50%",
-        border: "2px dashed #2e3d4e",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        position: "relative",
-        overflow: "visible",
-    },
-    imagePlaceholder: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
-    },
-    cameraIcon: {
-        fontSize: "32px",
-        opacity: 0.5,
-    },
-    plusBadge: {
-        position: "absolute",
-        bottom: "-14px",
-        right: "-14px",
-        backgroundColor: "#11b780",
-        color: "#fff",
-        borderRadius: "50%",
-        width: "22px",
-        height: "22px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "16px",
-        fontWeight: 700,
-        lineHeight: 1,
-    },
-    previewImage: {
-        width: "100%",
-        height: "100%",
-        borderRadius: "50%",
-        objectFit: "cover",
-    },
-    voiceSection: {
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-    },
-    voiceSectionLabel: {
-        color: "#4a5e70",
-        fontSize: "11px",
-        fontWeight: 600,
-        letterSpacing: "0.1em",
-        margin: "0 0 4px",
-    },
-    voiceOption: {
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        backgroundColor: "transparent",
-        border: "1px solid #1e2a35",
-        borderRadius: "10px",
-        padding: "14px 16px",
-        cursor: "pointer",
-        textAlign: "left",
-    },
-    voiceIcon: {
-        fontSize: "18px",
-        color: "#11b780",
-        minWidth: "24px",
-        textAlign: "center",
-    },
-    voiceTextGroup: {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        gap: "2px",
-    },
-    voiceLabel: {
-        color: "#ffffff",
-        fontSize: "14px",
-        fontWeight: 500,
-    },
-    voiceSub: {
-        color: "#4a5e70",
-        fontSize: "11px",
-        letterSpacing: "0.05em",
-    },
-    voiceArrow: {
-        color: "#4a5e70",
-        fontSize: "20px",
-    },
-
-    // FAB
-    fab: {
-        position: "fixed",
-        bottom: "28px",
-        right: "28px",
-        width: "52px",
-        height: "52px",
-        borderRadius: "50%",
-        backgroundColor: "#11b780",
-        border: "none",
-        fontSize: "22px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 4px 16px rgba(17,183,128,0.4)",
+        padding: "0 18px",
     },
 };
