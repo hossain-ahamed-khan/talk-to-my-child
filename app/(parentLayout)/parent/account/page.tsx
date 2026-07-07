@@ -3,8 +3,9 @@ import Image from "next/image";
 import { useState } from "react";
 import { useAppSelector } from "@/redux/hooks";
 import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
-import { useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
+import { type ChildProfile, useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
 import { selectAuth } from "@/redux/features/auth/authSlice";
+import CreateChildModal, { type CreateChildPayload } from "@/components/parent/create-child-modal";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ShareIcon = () => (
@@ -142,6 +143,8 @@ export default function AccountSettings() {
     const { data: childProfiles = [], isLoading: isChildrenLoading, isError: isChildrenError } = useGetChildListApiQuery(undefined, {
         skip: !auth.token,
     });
+    const [isCreateChildOpen, setIsCreateChildOpen] = useState(false);
+    const [localChildProfiles, setLocalChildProfiles] = useState<ChildProfile[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
     const effectiveProfile = profile ?? (auth.user ? {
@@ -157,10 +160,32 @@ export default function AccountSettings() {
         last_login: "",
     } : null);
 
-    const selectedChild = childProfiles.find((child) => child.id === selectedChildId) ?? childProfiles[0] ?? null;
+    const mergedChildProfiles = [...localChildProfiles, ...childProfiles];
+    const selectedChild = mergedChildProfiles.find((child) => child.id === selectedChildId) ?? mergedChildProfiles[0] ?? null;
     const childColors = ["#1a6b5a", "#1a4a6b", "#5a3d8c", "#6b5a1a"];
     const getChildColor = (index: number) => childColors[index % childColors.length];
     const formatChildAge = (age: number) => `${age} ${age === 1 ? "Year" : "Years"} Old`;
+
+    const handleCreateChild = (child: CreateChildPayload) => {
+        const createdChild: ChildProfile = {
+            id: child.id,
+            name: child.name,
+            age: child.age,
+            email: child.email,
+            profile_photo: child.profile_photo,
+            focus_area: child.focus_area,
+            personality_traits: child.personality_traits,
+            interests: child.interests,
+            dislikes: child.dislikes,
+            is_active: true,
+            is_staff: false,
+            parent: auth.user?.id ?? auth.token ?? "",
+            last_login: null,
+        };
+
+        setLocalChildProfiles((current) => [createdChild, ...current]);
+        setSelectedChildId(createdChild.id);
+    };
 
     const plans = [
         { name: "Bronze", desc: "Standard features", price: "£1.99/mo", accent: "#cd7f32", badge: null },
@@ -494,7 +519,7 @@ export default function AccountSettings() {
                                 background: "none", border: "none",
                                 color: "#10b981", fontSize: 13, fontWeight: 600,
                                 fontFamily: "'DM Sans', sans-serif", padding: 0,
-                            }}>
+                            }} type="button" onClick={() => setIsCreateChildOpen(true)}>
                                 + Add New
                             </button>
                         </div>
@@ -508,7 +533,7 @@ export default function AccountSettings() {
                                 marginBottom: 14,
                             }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                                    <ChildAvatar color={getChildColor(childProfiles.findIndex((child) => child.id === selectedChild.id))} />
+                                    <ChildAvatar color={getChildColor(mergedChildProfiles.findIndex((child) => child.id === selectedChild.id))} />
                                     <div style={{ minWidth: 0 }}>
                                         <div style={{ fontWeight: 700, fontSize: 15, color: "#e8f4f8" }}>{selectedChild.name}</div>
                                         <div style={{ fontSize: 12, color: "#4a7a90", marginTop: 2 }}>{selectedChild.email}</div>
@@ -568,7 +593,7 @@ export default function AccountSettings() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {isChildrenLoading && auth.token ? (
                                 <div style={{ fontSize: 13, color: "#8aaab8" }}>Loading child profiles...</div>
-                            ) : childProfiles.length > 0 ? childProfiles.map((child, index) => {
+                            ) : mergedChildProfiles.length > 0 ? mergedChildProfiles.map((child, index) => {
                                 const isSelected = child.id === selectedChildId;
                                 return (
                                     <button
@@ -611,6 +636,12 @@ export default function AccountSettings() {
                         </div>
                     </div>
                 </div>
+
+                <CreateChildModal
+                    open={isCreateChildOpen}
+                    onClose={() => setIsCreateChildOpen(false)}
+                    onCreate={handleCreateChild}
+                />
 
             </div>
         </div>

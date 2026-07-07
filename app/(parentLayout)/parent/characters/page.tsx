@@ -1,38 +1,19 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useState } from "react";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import CharacterCreateModal, {
+    defaultCharacterForm,
+    type CharacterFormState,
+} from "@/components/parent/character-create-modal";
 import { selectToken } from "@/redux/features/auth/authSlice";
 import { useAppSelector } from "@/redux/hooks";
 import {
     type CharacterProfile,
     useGetCharacterListApiQuery,
 } from "@/redux/features/parent/characters/characterList";
-import Image from "next/image";
-
-type CharacterFormState = {
-    name: string;
-    gender: string;
-    category: string;
-    role: string;
-    age: string;
-    description: string;
-    profile_image: string | null;
-    voice_sample: string | null;
-};
-
-const defaultCharacterForm: CharacterFormState = {
-    name: "",
-    gender: "Female",
-    category: "Creative Arts & Nature",
-    role: "User Companion / Storyteller Buddy",
-    age: "9",
-    description: "",
-    profile_image: null,
-    voice_sample: null,
-};
 
 export default function Characters() {
     const token = useAppSelector(selectToken);
@@ -42,22 +23,8 @@ export default function Characters() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [localCharacters, setLocalCharacters] = useState<CharacterProfile[]>([]);
     const [form, setForm] = useState<CharacterFormState>(defaultCharacterForm);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const characters = [...localCharacters, ...fetchedCharacters];
-
-    const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) {
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            setForm((current) => ({ ...current, profile_image: reader.result as string }));
-        };
-        reader.readAsDataURL(file);
-    };
 
     const openCreateModal = () => {
         setForm(defaultCharacterForm);
@@ -67,10 +34,6 @@ export default function Characters() {
     const closeCreateModal = () => {
         setIsCreateModalOpen(false);
         setForm(defaultCharacterForm);
-
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
     };
 
     const handleCreateCharacter = () => {
@@ -157,6 +120,8 @@ export default function Characters() {
                                             <Image
                                                 src={character.profile_image}
                                                 alt={character.name}
+                                                width={180}
+                                                height={180}
                                                 style={styles.avatarImage}
                                             />
                                         ) : (
@@ -198,120 +163,13 @@ export default function Characters() {
                 )}
             </div>
 
-            {isCreateModalOpen ? (
-                <div style={styles.modalOverlay} onClick={closeCreateModal}>
-                    <div style={styles.modal} onClick={(event) => event.stopPropagation()}>
-                        <div style={styles.modalHeader}>
-                            <div>
-                                <p style={styles.kicker}>New character</p>
-                                <h2 style={styles.modalTitle}>Add New Character</h2>
-                            </div>
-                            <button style={styles.closeButton} onClick={closeCreateModal} aria-label="Close modal">
-                                ×
-                            </button>
-                        </div>
-
-                        <div style={styles.modalBody}>
-                            <div style={styles.uploadColumn}>
-                                <div style={styles.uploadBox} onClick={() => fileInputRef.current?.click()}>
-                                    {form.profile_image ? (
-                                        <Image
-                                            src={form.profile_image}
-                                            alt="Preview"
-                                            width={180}
-                                            height={180}
-                                            style={styles.uploadImage}
-                                        />
-                                    ) : (
-                                        <div style={styles.uploadPlaceholder}>
-                                            <span style={styles.uploadIcon}>+</span>
-                                            <span style={styles.uploadText}>Add image</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: "none" }}
-                                    onChange={handleImageUpload}
-                                />
-                                <p style={styles.helperText}>Optional profile image for the character card.</p>
-                            </div>
-
-                            <div style={styles.formGrid}>
-                                <label style={styles.field}>
-                                    <span style={styles.label}>Character name</span>
-                                    <Input
-                                        value={form.name}
-                                        onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                                        placeholder="Zara Ahmed"
-                                    />
-                                </label>
-
-                                <label style={styles.field}>
-                                    <span style={styles.label}>Gender</span>
-                                    <Input
-                                        value={form.gender}
-                                        onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value }))}
-                                        placeholder="Female"
-                                    />
-                                </label>
-
-                                <label style={styles.field}>
-                                    <span style={styles.label}>Category</span>
-                                    <Input
-                                        value={form.category}
-                                        onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-                                        placeholder="Creative Arts & Nature"
-                                    />
-                                </label>
-
-                                <label style={styles.field}>
-                                    <span style={styles.label}>Role</span>
-                                    <Input
-                                        value={form.role}
-                                        onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
-                                        placeholder="User Companion / Storyteller Buddy"
-                                    />
-                                </label>
-
-                                <label style={styles.field}>
-                                    <span style={styles.label}>Age</span>
-                                    <Input
-                                        type="number"
-                                        value={form.age}
-                                        onChange={(event) => setForm((current) => ({ ...current, age: event.target.value }))}
-                                        placeholder="9"
-                                    />
-                                </label>
-
-                                <label style={{ ...styles.field, gridColumn: "1 / -1" }}>
-                                    <span style={styles.label}>Description</span>
-                                    <textarea
-                                        style={styles.textarea}
-                                        value={form.description}
-                                        onChange={(event) =>
-                                            setForm((current) => ({ ...current, description: event.target.value }))
-                                        }
-                                        placeholder="Describe the character's personality and speaking style."
-                                        rows={5}
-                                    />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div style={styles.modalActions}>
-                            <Button variant="outline" onClick={closeCreateModal} style={styles.actionButton}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleCreateCharacter} disabled={!form.name.trim()} style={styles.actionButton}>
-                                Create Character
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
+            <CharacterCreateModal
+                open={isCreateModalOpen}
+                form={form}
+                setForm={setForm}
+                onClose={closeCreateModal}
+                onCreate={handleCreateCharacter}
+            />
         </div>
     );
 }
