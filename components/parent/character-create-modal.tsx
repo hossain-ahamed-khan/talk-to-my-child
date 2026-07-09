@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, CSSProperties, Dispatch, SetStateAction } from "react";
 import Image from "next/image";
+
+import { useCreateCharacterMutation } from "@/redux/features/parent/characters/createCharacters";
+import type { CharacterProfile } from "@/redux/features/parent/characters/characterList";
 
 export type CharacterFormState = {
     name: string;
@@ -11,8 +14,8 @@ export type CharacterFormState = {
     role: string;
     age: string;
     description: string;
-    profile_image: string | null;
-    voice_sample: string | null;
+    profile_image: File | string | null;
+    voice_sample: File | string | null;
 };
 
 export const defaultCharacterForm: CharacterFormState = {
@@ -31,29 +34,76 @@ type CharacterCreateModalProps = {
     form: CharacterFormState;
     setForm: Dispatch<SetStateAction<CharacterFormState>>;
     onClose: () => void;
-    onCreate: () => void;
+    onCreate: (character: CharacterProfile) => void;
 };
 
 const genderOptions = ["Female", "Male", "Neutral"];
 
 const voiceSourceMethods = [
     {
+        key: "record",
         label: "Press to record",
         description: "Direct recording",
     },
     {
-        label: "Paste YouTube link",
-        description: "Web audio source",
-    },
-    {
+        key: "upload",
         label: "Choose File",
         description: "Select from device",
     },
-];
+] as const;
+
+type VoiceMethod = (typeof voiceSourceMethods)[number]["key"];
+type RecordingState = "idle" | "recording" | "processing";
 
 export default function CharacterCreateModal({ open, form, setForm, onClose, onCreate }: CharacterCreateModalProps) {
     const imageInputRef = useRef<HTMLInputElement>(null);
     const voiceInputRef = useRef<HTMLInputElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const recordingChunksRef = useRef<Blob[]>([]);
+    const isOpenRef = useRef(open);
+
+    const [createCharacter, { isLoading }] = useCreateCharacterMutation();
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [voiceMethod, setVoiceMethod] = useState<VoiceMethod | null>(null);
+    const [recordingState, setRecordingState] = useState<RecordingState>("idle");
+
+    useEffect(() => {
+        isOpenRef.current = open;
+    }, [open]);
+
+    useEffect(() => {
+        if (!form.profile_image) {
+            setImagePreviewUrl(null);
+            return;
+        }
+
+        if (typeof form.profile_image === "string") {
+            setImagePreviewUrl(form.profile_image);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(form.profile_image);
+        setImagePreviewUrl(objectUrl);
+
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [form.profile_image]);
+
+    useEffect(() => {
+        if (!open) {
+            setSubmitError(null);
+            setVoiceMethod(null);
+            setRecordingState("idle");
+        }
+    }, [open]);
+
+    useEffect(
+        () => () => {
+            stopRecordingSession();
+        },
+        []
+    );
 
     if (!open) {
         return null;
@@ -65,11 +115,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setForm((current) => ({ ...current, profile_image: reader.result as string }));
-        };
-        reader.readAsDataURL(file);
+        setForm((current) => ({ ...current, profile_image: file }));
     };
 
     const handleVoiceFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -78,27 +124,136 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
             return;
         }
 
-        setForm((current) => ({ ...current, voice_sample: file.name }));
+        setForm((current) => ({ ...current, voice_sample: file }));
+        setVoiceMethod("upload");
     };
 
-    const handleVoiceMethodClick = (methodLabel: string) => {
-        if (methodLabel === "Paste YouTube link") {
-            const pastedLink = window.prompt("Paste a voice sample link");
-            if (!pastedLink) {
+    const handleVoiceMethodClick = (method: VoiceMethod) => {
+        if (method === "upload") {
+            if (recordingState !== "idle") {
                 return;
             }
 
-            setForm((current) => ({ ...current, voice_sample: pastedLink }));
-            return;
-        }
-
-        if (methodLabel === "Choose File") {
             voiceInputRef.current?.click();
             return;
         }
 
-        setForm((current) => ({ ...current, voice_sample: methodLabel }));
+        if (recordingState === "recording") {
+            stopRecording();
+            return;
+        }
+
+        if (recordingState === "idle") {
+            void startRecording();
+        }
     };
+
+    const handleCreate = async () => {
+        setSubmitError(null);
+
+        try {
+            const response = await createCharacter(buildCharacterFormData(form)).unwrap();
+            onCreate(response.data);
+            onClose();
+        } catch (error) {
+            setSubmitError(getErrorMessage(error, "Unable to create character. Please try again."));
+        }
+    };
+
+    function stopRecordingSession() {
+        const recorder = mediaRecorderRef.current;
+
+        if (recorder && recorder.state !== "inactive") {
+            recorder.stop();
+        }
+
+        mediaRecorderRef.current = null;
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+    }
+
+    async function startRecording() {
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+            setSubmitError("This browser does not support voice recording.");
+            return;
+        }
+
+        try {
+            setSubmitError(null);
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            recordingChunksRef.current = [];
+
+            const mimeType = getSupportedRecordingMimeType();
+            const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+            mediaRecorderRef.current = recorder;
+            setVoiceMethod("record");
+            setRecordingState("recording");
+
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordingChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                void finalizeRecording(recorder.mimeType || "audio/webm");
+            };
+
+            recorder.start();
+        } catch (error) {
+            stopRecordingSession();
+            setRecordingState("idle");
+            setSubmitError(getErrorMessage(error, "Unable to access the microphone."));
+        }
+    }
+
+    function stopRecording() {
+        const recorder = mediaRecorderRef.current;
+
+        if (!recorder || recorder.state === "inactive") {
+            return;
+        }
+
+        recorder.stop();
+        setRecordingState("processing");
+    }
+
+    async function finalizeRecording(mimeType: string) {
+        const chunks = recordingChunksRef.current.slice();
+        recordingChunksRef.current = [];
+
+        try {
+            if (!isOpenRef.current) {
+                return;
+            }
+
+            const recordedBlob = new Blob(chunks, { type: mimeType });
+            const recordedFile = createRecordedAudioFile(recordedBlob, mimeType);
+
+            setForm((current) => ({ ...current, voice_sample: recordedFile }));
+            setVoiceMethod("record");
+        } catch (error) {
+            if (isOpenRef.current) {
+                setSubmitError(getErrorMessage(error, "Unable to save the recording."));
+            }
+        } finally {
+            stopRecordingSession();
+            if (isOpenRef.current) {
+                setRecordingState("idle");
+            }
+        }
+    }
+
+    const selectedVoiceLabel =
+        form.voice_sample instanceof File
+            ? form.voice_sample.name
+            : voiceMethod === "record"
+                ? "Recorded voice"
+                : null;
+
+    const createDisabled = !form.name.trim() || isLoading || recordingState !== "idle";
 
     return (
         <div style={styles.overlay} onClick={onClose}>
@@ -192,7 +347,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                                     onChange={(event) =>
                                         setForm((current) => ({ ...current, description: event.target.value }))
                                     }
-                                    placeholder="Warm, encouraging, and likes to tell dad jokes. Always starts conversations with 'Hey champ!'."
+                                    placeholder="Warm, encouraging, and likes to tell dad jokes. Always starts conversations with 'Hey champ!'"
                                     rows={5}
                                     style={styles.textarea}
                                 />
@@ -200,8 +355,8 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                         </div>
 
                         <div style={styles.actions}>
-                            <button type="button" onClick={onCreate} disabled={!form.name.trim()} style={styles.primaryAction}>
-                                Create Character
+                            <button type="button" onClick={handleCreate} disabled={createDisabled} style={styles.primaryAction}>
+                                {isLoading ? "Creating..." : "Create Character"}
                             </button>
                             <button type="button" onClick={onClose} style={styles.secondaryAction}>
                                 Cancel
@@ -214,9 +369,9 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                             <p style={styles.panelTitle}>Upload Character Image (Optional)</p>
 
                             <button type="button" style={styles.imagePicker} onClick={() => imageInputRef.current?.click()}>
-                                {form.profile_image ? (
+                                {imagePreviewUrl ? (
                                     <Image
-                                        src={form.profile_image}
+                                        src={imagePreviewUrl}
                                         alt="Character preview"
                                         width={156}
                                         height={156}
@@ -249,30 +404,34 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
 
                             <div style={styles.voiceList}>
                                 {voiceSourceMethods.map((method) => {
-                                    const selected = form.voice_sample === method.label;
+                                    const selected = method.key === "record" ? voiceMethod === "record" : voiceMethod === "upload";
+                                    const label =
+                                        method.key === "record"
+                                            ? recordingState === "recording"
+                                                ? "Stop recording"
+                                                : recordingState === "processing"
+                                                    ? "Encoding voice..."
+                                                    : method.label
+                                            : method.label;
 
                                     return (
                                         <button
-                                            key={method.label}
+                                            key={method.key}
                                             type="button"
-                                            onClick={() => handleVoiceMethodClick(method.label)}
+                                            onClick={() => handleVoiceMethodClick(method.key)}
+                                            disabled={recordingState === "processing" || isLoading}
                                             style={{
                                                 ...styles.voiceCard,
                                                 ...(selected ? styles.voiceCardActive : null),
+                                                ...(recordingState === "recording" && method.key === "record" ? styles.voiceCardRecording : null),
                                             }}
                                         >
                                             <div style={styles.voiceIconWrap}>
-                                                {method.label === "Press to record" ? (
+                                                {method.key === "record" ? (
                                                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
                                                         <rect x="7" y="2.5" width="4" height="9" rx="2" stroke="#14d39c" strokeWidth="1.5" />
                                                         <path d="M5.5 8.5C5.5 10.985 7.515 13 10 13C12.485 13 14.5 10.985 14.5 8.5" stroke="#14d39c" strokeWidth="1.5" strokeLinecap="round" />
                                                         <path d="M9 13V15.5" stroke="#14d39c" strokeWidth="1.5" strokeLinecap="round" />
-                                                    </svg>
-                                                ) : method.label === "Paste YouTube link" ? (
-                                                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                                                        <path d="M7 9h4" stroke="#14d39c" strokeWidth="1.5" strokeLinecap="round" />
-                                                        <path d="M8.5 6.5 6 9l2.5 2.5" stroke="#14d39c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                        <path d="M10 11.5 12.5 9 10 6.5" stroke="#14d39c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 ) : (
                                                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -285,7 +444,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                                             </div>
 
                                             <div style={styles.voiceCopy}>
-                                                <span style={styles.voiceLabel}>{method.label}</span>
+                                                <span style={styles.voiceLabel}>{label}</span>
                                                 <span style={styles.voiceDescription}>{method.description}</span>
                                             </div>
 
@@ -295,13 +454,78 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                                 })}
                             </div>
 
+                            {selectedVoiceLabel ? <p style={styles.fileStatus}>Selected voice: {selectedVoiceLabel}</p> : null}
+                            {recordingState === "recording" ? (
+                                <p style={styles.fileStatus}>Recording now. Click the button again to stop.</p>
+                            ) : null}
+                            {recordingState === "processing" ? <p style={styles.fileStatus}>Saving recorded audio...</p> : null}
+
                             <input ref={voiceInputRef} type="file" accept="audio/*" hidden onChange={handleVoiceFileUpload} />
                         </div>
+
+                        {submitError ? <p style={styles.errorText}>{submitError}</p> : null}
                     </aside>
                 </div>
             </div>
         </div>
     );
+}
+
+function buildCharacterFormData(form: CharacterFormState) {
+    const formData = new FormData();
+
+    formData.append("name", form.name.trim());
+    formData.append("gender", form.gender.trim());
+    formData.append("category", form.category.trim());
+    formData.append("role", form.role.trim());
+    formData.append("age", form.age.trim());
+    formData.append("description", form.description.trim());
+
+    if (form.profile_image instanceof File) {
+        formData.append("profile_image", form.profile_image, form.profile_image.name);
+    }
+
+    if (form.voice_sample instanceof File) {
+        formData.append("voice_sample", form.voice_sample, form.voice_sample.name);
+    }
+
+    return formData;
+}
+
+function createRecordedAudioFile(recordingBlob: Blob, mimeType: string) {
+    const extension = mimeType.includes("ogg") ? "ogg" : mimeType.includes("wav") ? "wav" : "webm";
+    const normalizedType = mimeType || recordingBlob.type || "audio/webm";
+
+    return new File([recordingBlob], `voice-sample-${Date.now()}.${extension}`, { type: normalizedType });
+}
+
+function getSupportedRecordingMimeType() {
+    if (typeof MediaRecorder === "undefined") {
+        return "";
+    }
+
+    if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        return "audio/webm;codecs=opus";
+    }
+
+    if (MediaRecorder.isTypeSupported("audio/webm")) {
+        return "audio/webm";
+    }
+
+    return "";
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    if (typeof error === "object" && error !== null && "data" in error) {
+        const data = (error as { data?: { message?: string; detail?: string } }).data;
+        return data?.message ?? data?.detail ?? fallback;
+    }
+
+    return fallback;
 }
 
 const styles: Record<string, CSSProperties> = {
@@ -445,7 +669,7 @@ const styles: Record<string, CSSProperties> = {
         transition: "all 0.18s ease",
     },
     segmentButtonActive: {
-        borderColor: "rgba(20, 211, 156, 0.95)",
+        border: "1px solid rgba(20, 211, 156, 0.95)",
         color: "#12d39b",
         boxShadow: "0 0 0 1px rgba(20, 211, 156, 0.16) inset",
     },
@@ -584,8 +808,12 @@ const styles: Record<string, CSSProperties> = {
         boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.01)",
     },
     voiceCardActive: {
-        borderColor: "rgba(20, 211, 156, 0.7)",
+        border: "1px solid rgba(20, 211, 156, 0.7)",
         boxShadow: "0 0 0 1px rgba(20, 211, 156, 0.1) inset",
+    },
+    voiceCardRecording: {
+        border: "1px solid rgba(20, 211, 156, 0.9)",
+        background: "rgba(20, 211, 156, 0.1)",
     },
     voiceIconWrap: {
         width: "34px",
@@ -620,5 +848,17 @@ const styles: Record<string, CSSProperties> = {
         fontSize: "24px",
         lineHeight: 1,
         marginLeft: "4px",
+    },
+    fileStatus: {
+        margin: "10px 0 0",
+        color: "#8a9eb2",
+        fontSize: "12px",
+        lineHeight: 1.5,
+    },
+    errorText: {
+        margin: "14px 0 0",
+        color: "#ff8f8f",
+        fontSize: "13px",
+        lineHeight: 1.5,
     },
 };

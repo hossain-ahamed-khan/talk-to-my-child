@@ -4,16 +4,24 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import CharacterCreateModal, {
-    defaultCharacterForm,
-    type CharacterFormState,
-} from "@/components/parent/character-create-modal";
 import { selectToken } from "@/redux/features/auth/authSlice";
 import { useAppSelector } from "@/redux/hooks";
 import {
     type CharacterProfile,
     useGetCharacterListApiQuery,
 } from "@/redux/features/parent/characters/characterList";
+import CharacterCreateModal, { CharacterFormState } from "@/components/parent/character-create-modal";
+
+export const defaultCharacterForm: CharacterFormState = {
+    name: "",
+    gender: "Female",
+    category: "Creative Arts & Nature",
+    role: "User Companion / Storyteller Buddy",
+    age: "9",
+    description: "",
+    profile_image: null,
+    voice_sample: null,
+};
 
 export default function Characters() {
     const token = useAppSelector(selectToken);
@@ -36,24 +44,9 @@ export default function Characters() {
         setForm(defaultCharacterForm);
     };
 
-    const handleCreateCharacter = () => {
-        const now = new Date().toISOString();
-
+    const handleCreateCharacter = (createdCharacter: CharacterProfile) => {
         setLocalCharacters((current) => [
-            {
-                id: Date.now(),
-                name: form.name.trim() || "New Character",
-                age: Number(form.age) || 0,
-                gender: form.gender.trim(),
-                category: form.category.trim(),
-                role: form.role.trim(),
-                description: form.description.trim(),
-                profile_image: form.profile_image,
-                voice_sample: form.voice_sample,
-                created_at: now,
-                updated_at: now,
-                created_by: token ?? "",
-            },
+            createdCharacter,
             ...current,
         ]);
 
