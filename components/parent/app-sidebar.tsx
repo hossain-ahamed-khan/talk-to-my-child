@@ -5,9 +5,9 @@ import {
     Users,
     History,
     User,
-    Settings,
+    LogOut,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     Sidebar,
     SidebarContent,
@@ -23,8 +23,8 @@ import {
 import Link from "next/link";
 import mainLogo from "@/public/images/main-logo.png";
 import Image from "next/image";
-import { useAppSelector } from "@/redux/hooks";
-import { selectUser } from "@/redux/features/auth/authSlice";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { selectUser, logout } from "@/redux/features/auth/authSlice";
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -69,8 +69,15 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const user = useAppSelector(selectUser);
     const pathname = usePathname();
+    const router = useRouter();
+    const dispatch = useAppDispatch();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
+
+    const handleLogout = () => {
+        dispatch(logout());
+        router.push("/login");
+    };
 
     return (
         <Sidebar
@@ -148,8 +155,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         )}
                     </div>
                     {!isCollapsed && (
-                        <button className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                            <Settings className="w-4 h-4" />
+                        <button
+                            onClick={handleLogout}
+                            className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                            title="Logout"
+                        >
+                            <LogOut className="w-4 h-4" />
                         </button>
                     )}
                 </div>
