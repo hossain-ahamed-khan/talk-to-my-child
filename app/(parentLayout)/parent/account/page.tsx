@@ -5,7 +5,7 @@ import { useAppSelector } from "@/redux/hooks";
 import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
 import { type ChildProfile, useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
 import { selectAuth } from "@/redux/features/auth/authSlice";
-import CreateChildModal, { type CreateChildPayload } from "@/components/parent/create-child-modal";
+import CreateChildModal from "@/components/parent/create-child-modal";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ShareIcon = () => (
@@ -166,25 +166,9 @@ export default function AccountSettings() {
     const getChildColor = (index: number) => childColors[index % childColors.length];
     const formatChildAge = (age: number) => `${age} ${age === 1 ? "Year" : "Years"} Old`;
 
-    const handleCreateChild = (child: CreateChildPayload) => {
-        const createdChild: ChildProfile = {
-            id: child.id,
-            name: child.name,
-            age: child.age,
-            email: child.email,
-            profile_photo: child.profile_photo,
-            focus_area: child.focus_area,
-            personality_traits: child.personality_traits,
-            interests: child.interests,
-            dislikes: child.dislikes,
-            is_active: true,
-            is_staff: false,
-            parent: auth.user?.id ?? auth.token ?? "",
-            last_login: null,
-        };
-
-        setLocalChildProfiles((current) => [createdChild, ...current]);
-        setSelectedChildId(createdChild.id);
+    const handleCreateChild = (child: ChildProfile) => {
+        setLocalChildProfiles((current) => [child, ...current]);
+        setSelectedChildId(child.id);
     };
 
     const plans = [

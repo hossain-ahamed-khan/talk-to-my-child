@@ -3,25 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, CSSProperties, KeyboardEvent } from "react";
 import Image from "next/image";
-
-export type CreateChildPayload = {
-    id: string;
-    name: string;
-    age: number;
-    username: string;
-    email: string;
-    password: string;
-    profile_photo: string | null;
-    focus_area: string[];
-    personality_traits: string[];
-    interests: string[];
-    dislikes: string[];
-};
+import { useAppSelector } from "@/redux/hooks";
+import { selectAuth } from "@/redux/features/auth/authSlice";
+import { useCreateChildMutation, type CreateChildRequest, type CreateChildResponseData } from "@/redux/features/child/createChild";
 
 type CreateChildModalProps = {
     open: boolean;
     onClose: () => void;
-    onCreate: (child: CreateChildPayload) => void;
+    onCreate: (child: CreateChildResponseData) => void;
 };
 
 type ChildFormState = {
@@ -93,11 +82,17 @@ function Chip({ text, onRemove }: { text: string; onRemove: () => void }) {
 
 export default function CreateChildModal({ open, onClose, onCreate }: CreateChildModalProps) {
     const [form, setForm] = useState<ChildFormState>(emptyForm);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const auth = useAppSelector(selectAuth);
+    const [createChild] = useCreateChildMutation();
 
     useEffect(() => {
         if (open) {
             setForm(emptyForm);
+            setSubmitError(null);
+            setIsSubmitting(false);
         }
     }, [open]);
 
@@ -171,21 +166,35 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
 
     const splitListValue = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
-    const handleCreate = () => {
-        onCreate({
-            id: `child-${Date.now()}`,
-            name: form.name.trim(),
-            age: Number(form.age) || 0,
-            username: form.username.trim(),
+    const handleCreate = async () => {
+        if (!auth.user?.id) {
+            setSubmitError("Parent account data is unavailable.");
+            return;
+        }
+
+        const payload: CreateChildRequest = {
             email: form.email.trim(),
             password: form.password,
-            profile_photo: form.image,
+            name: form.name.trim(),
+            age: Number(form.age) || 0,
+            parent: auth.user.id,
+            profile_photo: null,
             focus_area: form.focusArea,
-            personality_traits: form.personalityTraits,
             interests: splitListValue(form.interests),
             dislikes: splitListValue(form.dislikes),
-        });
-        onClose();
+        };
+
+        try {
+            setSubmitError(null);
+            setIsSubmitting(true);
+            const response = await createChild(payload).unwrap();
+            onCreate(response.data);
+            onClose();
+        } catch (error) {
+            setSubmitError(error instanceof Error ? error.message : "Unable to create child right now.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!open) {
@@ -248,16 +257,6 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                             </label>
 
                             <label style={styles.field}>
-                                <span style={styles.label}>Username</span>
-                                <input
-                                    value={form.username}
-                                    onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))}
-                                    placeholder="Dad"
-                                    style={styles.input}
-                                />
-                            </label>
-
-                            <label style={styles.field}>
                                 <span style={styles.label}>Email</span>
                                 <input
                                     value={form.email}
@@ -285,7 +284,7 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
 
                             <label style={styles.field}>
                                 <span style={styles.label}>Focus Subjects (Optional)</span>
-                                <span style={styles.helper}>Select areas you want the AI to emphasize during conversations.</span>
+                                <span style={styles.helper}>Add multiple options, separated by commas.</span>
                                 <div style={styles.tagBox}>
                                     {form.focusArea.map((item) => (
                                         <Chip key={item} text={item} onRemove={() => removeChip("focusArea", item)} />
@@ -301,25 +300,8 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                             </label>
 
                             <label style={styles.field}>
-                                <span style={styles.label}>Personality (Optional)</span>
-                                <span style={styles.helper}>Define the behavioral traits the AI should adapt to.</span>
-                                <div style={styles.tagBox}>
-                                    {form.personalityTraits.map((item) => (
-                                        <Chip key={item} text={item} onRemove={() => removeChip("personalityTraits", item)} />
-                                    ))}
-                                    <input
-                                        value={form.personalityInput}
-                                        onChange={(event) => setForm((current) => ({ ...current, personalityInput: event.target.value }))}
-                                        onKeyDown={(event) => handleChipKeyDown(event, "personalityTraits", form.personalityInput)}
-                                        placeholder="Add trait..."
-                                        style={styles.tagInput}
-                                    />
-                                </div>
-                            </label>
-
-                            <label style={styles.field}>
                                 <span style={styles.label}>Interests (Optional)</span>
-                                <span style={styles.helper}>Topics that get your child excited and engaged.</span>
+                                <span style={styles.helper}>Add multiple options, separated by commas.</span>
                                 <textarea
                                     value={form.interests}
                                     onChange={(event) => setForm((current) => ({ ...current, interests: event.target.value }))}
@@ -331,7 +313,7 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
 
                             <label style={styles.field}>
                                 <span style={styles.label}>Dislikes (Optional)</span>
-                                <span style={styles.helper}>Avoid these topics to keep the experience positive.</span>
+                                <span style={styles.helper}>Add multiple options, separated by commas.</span>
                                 <textarea
                                     value={form.dislikes}
                                     onChange={(event) => setForm((current) => ({ ...current, dislikes: event.target.value }))}
@@ -343,13 +325,17 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                         </div>
 
                         <div style={styles.actions}>
-                            <button type="button" onClick={handleCreate} disabled={!form.name.trim()} style={styles.primaryAction}>
-                                Create Child
+                            <button type="button" onClick={handleCreate} disabled={!form.name.trim() || !form.email.trim() || !form.password || isSubmitting} style={styles.primaryAction}>
+                                {isSubmitting ? "Creating..." : "Create Child"}
                             </button>
                             <button type="button" onClick={onClose} style={styles.secondaryAction}>
                                 Cancel
                             </button>
                         </div>
+
+                        {submitError && (
+                            <p style={styles.errorText}>{submitError}</p>
+                        )}
                     </section>
 
                     <aside style={styles.rightColumn}>
@@ -621,6 +607,12 @@ const styles: Record<string, CSSProperties> = {
         fontSize: "15px",
         fontWeight: 700,
         cursor: "pointer",
+    },
+    errorText: {
+        margin: "12px 0 0",
+        color: "#fca5a5",
+        fontSize: "13px",
+        lineHeight: 1.5,
     },
     imagePanel: {
         borderRadius: "24px",
