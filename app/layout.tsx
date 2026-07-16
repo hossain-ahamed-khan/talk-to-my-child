@@ -3,7 +3,7 @@ import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Providers from "@/redux/Providers";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 
 const dmSans = DM_Sans({
   variable: "--font-sans",
@@ -37,7 +37,7 @@ export default function RootLayout({
         <Providers>
           <TooltipProvider>{children}</TooltipProvider>
         </Providers>
-        <Toaster />
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

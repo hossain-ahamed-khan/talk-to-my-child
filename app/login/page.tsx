@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppDispatch } from "@/redux/hooks";
 import { setUser } from "@/redux/features/auth/authSlice";
 import { useLoginMutation } from "@/redux/features/auth/authApi";
+import Link from "next/link";
 
 const ChatIcon = () => (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,15 +20,6 @@ const ChatIcon = () => (
         <circle cx="13" cy="16" r="1.2" fill="#2dd67b" />
         <circle cx="18" cy="16" r="1.2" fill="#2dd67b" />
         <circle cx="23" cy="16" r="1.2" fill="#2dd67b" />
-    </svg>
-);
-
-const GoogleIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.39a4.6 4.6 0 01-2 3.02v2.5h3.23C18.34 15.8 19.6 13.27 19.6 10.23z" fill="#4285F4" />
-        <path d="M10 20c2.7 0 4.97-.9 6.63-2.44l-3.23-2.5c-.9.6-2.04.96-3.4.96-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A10 10 0 0010 20z" fill="#34A853" />
-        <path d="M4.4 11.9A6.04 6.04 0 014.08 10c0-.66.12-1.3.32-1.9V5.52H1.07A10 10 0 000 10c0 1.62.39 3.15 1.07 4.48L4.4 11.9z" fill="#FBBC05" />
-        <path d="M10 3.96c1.47 0 2.78.5 3.82 1.5L16.7 2.6C14.97.99 12.7 0 10 0A10 10 0 001.07 5.52L4.4 8.1C5.19 5.74 7.4 3.96 10 3.96z" fill="#EA4335" />
     </svg>
 );
 
@@ -392,41 +384,42 @@ export default function TalkToMyChildLogin() {
                         onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
                         onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
                     >
-                        {isLoading ? "Signing in..." : "Continue with Email"}
+                        {isLoading ? "Login..." : "Log in"}
                     </button>
 
                     {/* OR divider */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
                         <div style={{ flex: 1, height: "1px", background: "#1e3040" }} />
-                        <span style={{ fontSize: "12px", color: "#4a6358", fontWeight: "600", letterSpacing: "1px" }}>OR</span>
+                        <span style={{ fontSize: "12px", color: "#4a6358", fontWeight: "600", letterSpacing: "1px" }}>don&apos;t have any account?</span>
                         <div style={{ flex: 1, height: "1px", background: "#1e3040" }} />
                     </div>
 
                     {/* Continue with Google */}
-                    <button
-                        type="button"
-                        style={{
-                            width: "100%",
-                            padding: "15px",
-                            background: "#ffffff",
-                            color: "#1a1a1a",
-                            border: "none",
-                            borderRadius: "12px",
-                            fontSize: "15px",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "10px",
-                            transition: "opacity 0.2s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-                    >
-                        <GoogleIcon />
-                        Continue with Google
-                    </button>
+                    <Link href="/signup">
+                        <button
+                            type="button"
+                            style={{
+                                width: "100%",
+                                padding: "15px",
+                                background: "#ffffff",
+                                color: "#1a1a1a",
+                                border: "none",
+                                borderRadius: "12px",
+                                fontSize: "15px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "10px",
+                                transition: "opacity 0.2s",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                        >
+                            Create New Account
+                        </button>
+                    </Link>
                 </form>
             </div>
         </div>

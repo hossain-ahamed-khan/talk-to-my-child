@@ -1,5 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useRegisterMutation, useVerifyOtpMutation } from "@/redux/features/register/registerApi";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 const ChatIcon = () => (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -13,15 +17,6 @@ const ChatIcon = () => (
         <circle cx="13" cy="16" r="1.2" fill="#2dd67b" />
         <circle cx="18" cy="16" r="1.2" fill="#2dd67b" />
         <circle cx="23" cy="16" r="1.2" fill="#2dd67b" />
-    </svg>
-);
-
-const GoogleIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.39a4.6 4.6 0 01-2 3.02v2.5h3.23C18.34 15.8 19.6 13.27 19.6 10.23z" fill="#4285F4" />
-        <path d="M10 20c2.7 0 4.97-.9 6.63-2.44l-3.23-2.5c-.9.6-2.04.96-3.4.96-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A10 10 0 0010 20z" fill="#34A853" />
-        <path d="M4.4 11.9A6.04 6.04 0 014.08 10c0-.66.12-1.3.32-1.9V5.52H1.07A10 10 0 000 10c0 1.62.39 3.15 1.07 4.48L4.4 11.9z" fill="#FBBC05" />
-        <path d="M10 3.96c1.47 0 2.78.5 3.82 1.5L16.7 2.6C14.97.99 12.7 0 10 0A10 10 0 001.07 5.52L4.4 8.1C5.19 5.74 7.4 3.96 10 3.96z" fill="#EA4335" />
     </svg>
 );
 
@@ -67,18 +62,199 @@ const inputStyle: React.CSSProperties = {
     transition: "border-color 0.2s",
 };
 
+// ---------- OTP Modal ----------
+function OtpModal({
+    email,
+    onClose,
+}: {
+    email: string;
+    onClose: () => void;
+}) {
+    const router = useRouter();
+    const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
+    const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
+    const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+    const handleChange = (index: number, value: string) => {
+        if (!/^\d*$/.test(value)) return; // digits only
+        const next = [...digits];
+        next[index] = value.slice(-1);
+        setDigits(next);
+        if (value && index < 5) {
+            inputsRef.current[index + 1]?.focus();
+        }
+    };
+
+    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace" && !digits[index] && index > 0) {
+            inputsRef.current[index - 1]?.focus();
+        }
+    };
+
+    const handleVerify = async () => {
+        const otp = digits.join("");
+        if (otp.length !== 6) {
+            toast.error("Please enter the full 6-digit code.");
+            return;
+        }
+
+        try {
+            const res = await verifyOtp({
+                email,
+                otp_type: "REGISTER_VERIFY",
+                otp,
+            }).unwrap();
+
+            if (res?.success) {
+                // Store the access token
+                if (typeof window !== "undefined" && res?.data?.access_token) {
+                    localStorage.setItem("access_token", res.data.access_token);
+                }
+                toast.success(res.message || "Email verified. You are now logged in.");
+                onClose();
+                router.push("/login");
+            }
+        } catch (err: any) {
+            toast.error(err?.data?.message || "OTP verification failed. Please try again.");
+        }
+    };
+
+    return (
+        <div
+            style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 50,
+            }}
+        >
+            <div
+                style={{
+                    width: "380px",
+                    background: "#111f2b",
+                    border: "1px solid #1e3040",
+                    borderRadius: "20px",
+                    padding: "36px 32px",
+                }}
+            >
+                <h3 style={{ color: "#fff", fontSize: "20px", fontWeight: 800, margin: "0 0 8px 0", textAlign: "center" }}>
+                    Verify your email
+                </h3>
+                <p style={{ color: "#8fa89f", fontSize: "13px", textAlign: "center", margin: "0 0 24px 0" }}>
+                    Enter the 6-digit code sent to <strong style={{ color: "#fff" }}>{email}</strong>
+                </p>
+
+                <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginBottom: "24px" }}>
+                    {digits.map((digit, i) => (
+                        <input
+                            key={i}
+                            ref={(el) => { inputsRef.current[i] = el; }}
+                            value={digit}
+                            onChange={(e) => handleChange(i, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                            maxLength={1}
+                            inputMode="numeric"
+                            style={{
+                                width: "44px",
+                                height: "52px",
+                                textAlign: "center",
+                                fontSize: "20px",
+                                fontWeight: 700,
+                                background: "#0d1b24",
+                                border: "1px solid #1e3040",
+                                borderRadius: "10px",
+                                color: "#fff",
+                                outline: "none",
+                            }}
+                        />
+                    ))}
+                </div>
+
+                <button
+                    onClick={handleVerify}
+                    disabled={isLoading}
+                    style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: "#2dd67b",
+                        color: "#0d1b24",
+                        border: "none",
+                        borderRadius: "12px",
+                        fontSize: "15px",
+                        fontWeight: 700,
+                        cursor: isLoading ? "not-allowed" : "pointer",
+                        opacity: isLoading ? 0.7 : 1,
+                        marginBottom: "12px",
+                    }}
+                >
+                    {isLoading ? "Verifying..." : "Verify"}
+                </button>
+
+                <button
+                    onClick={onClose}
+                    style={{
+                        width: "100%",
+                        padding: "12px",
+                        background: "transparent",
+                        color: "#8fa89f",
+                        border: "none",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                    }}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ---------- Main Component ----------
 export default function TalkToMyChildRegister() {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [referral, setReferral] = useState("");
+    const [retype_password, setRetype_password] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+
+    const [registerUser, { isLoading }] = useRegisterMutation();
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
         e.target.style.borderColor = "#2dd67b";
     };
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         e.target.style.borderColor = "#1e3040";
+    };
+
+    const handleSignUp = async () => {
+        if (!fullName || !email || !password || !retype_password) {
+            toast.error("Please fill in all fields.");
+            return;
+        }
+        if (password !== retype_password) {
+            toast.error("Passwords do not match.");
+            return;
+        }
+
+        try {
+            const res = await registerUser({
+                email,
+                password,
+                full_name: fullName,
+                confirm_password: retype_password,
+            }).unwrap();
+
+            if (res?.success) {
+                toast.success(res.message || "Registration successful. OTP sent to email.");
+                setShowOtpModal(true);
+            }
+        } catch (err: any) {
+            toast.error(err?.data?.message || "Registration failed. Please try again.");
+        }
     };
 
     return (
@@ -101,7 +277,6 @@ export default function TalkToMyChildRegister() {
 
                 {/* LEFT SIDE */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Logo */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", marginBottom: "32px" }}>
                         <div style={{
                             background: "#152820",
@@ -127,7 +302,6 @@ export default function TalkToMyChildRegister() {
                         </div>
                     </div>
 
-                    {/* Badge */}
                     <div style={{
                         display: "inline-flex",
                         alignItems: "center",
@@ -144,7 +318,6 @@ export default function TalkToMyChildRegister() {
                         </span>
                     </div>
 
-                    {/* Headline */}
                     <h1 style={{
                         fontSize: "clamp(36px, 5vw, 54px)",
                         fontWeight: "900",
@@ -156,7 +329,6 @@ export default function TalkToMyChildRegister() {
                         Connect Deeper<br />with Your Child
                     </h1>
 
-                    {/* Subtext */}
                     <p style={{
                         fontSize: "16px",
                         color: "#8fa89f",
@@ -167,7 +339,6 @@ export default function TalkToMyChildRegister() {
                         Navigate difficult conversations and build stronger emotional bonds using AI-powered insights tailored to your child&apos;s personality.
                     </p>
 
-                    {/* CTA */}
                     <button
                         style={{
                             background: "#2dd67b",
@@ -187,7 +358,6 @@ export default function TalkToMyChildRegister() {
                         Get Started Now
                     </button>
 
-                    {/* Social proof */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <div style={{ display: "flex" }}>
                             {avatars.map((a, i) => (
@@ -245,7 +415,6 @@ export default function TalkToMyChildRegister() {
                         Start your premium parenting journey today.
                     </p>
 
-                    {/* Full Name */}
                     <div style={{ marginBottom: "16px" }}>
                         <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#c0d4cc", marginBottom: "8px" }}>
                             Full Name
@@ -261,7 +430,6 @@ export default function TalkToMyChildRegister() {
                         />
                     </div>
 
-                    {/* Email */}
                     <div style={{ marginBottom: "16px" }}>
                         <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#c0d4cc", marginBottom: "8px" }}>
                             Email address
@@ -277,7 +445,6 @@ export default function TalkToMyChildRegister() {
                         />
                     </div>
 
-                    {/* Password */}
                     <div style={{ marginBottom: "16px" }}>
                         <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#c0d4cc", marginBottom: "8px" }}>
                             Password
@@ -313,24 +480,44 @@ export default function TalkToMyChildRegister() {
                         </div>
                     </div>
 
-                    {/* Referral Code */}
-                    <div style={{ marginBottom: "28px" }}>
+                    <div style={{ marginBottom: "16px" }}>
                         <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#c0d4cc", marginBottom: "8px" }}>
-                            Referral Code
+                            Re-type Password
                         </label>
-                        <input
-                            type="text"
-                            placeholder="EX: PREMIUM2024"
-                            value={referral}
-                            onChange={e => setReferral(e.target.value)}
-                            style={inputStyle}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="••••••••••"
+                                value={retype_password}
+                                onChange={e => setRetype_password(e.target.value)}
+                                style={{ ...inputStyle, paddingRight: "48px" }}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(p => !p)}
+                                style={{
+                                    position: "absolute",
+                                    right: "14px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <EyeIcon show={showPassword} />
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Continue with Email */}
                     <button
+                        onClick={handleSignUp}
+                        disabled={isLoading}
                         style={{
                             width: "100%",
                             padding: "15px",
@@ -340,49 +527,51 @@ export default function TalkToMyChildRegister() {
                             borderRadius: "12px",
                             fontSize: "15px",
                             fontWeight: "700",
-                            cursor: "pointer",
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                            opacity: isLoading ? 0.7 : 1,
                             marginBottom: "16px",
                             transition: "opacity 0.2s",
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
                     >
-                        Continue with Email
+                        {isLoading ? "Signing up..." : "Sign up"}
                     </button>
 
-                    {/* OR divider */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
                         <div style={{ flex: 1, height: "1px", background: "#1e3040" }} />
                         <span style={{ fontSize: "12px", color: "#4a6358", fontWeight: "600", letterSpacing: "1px" }}>OR</span>
                         <div style={{ flex: 1, height: "1px", background: "#1e3040" }} />
                     </div>
 
-                    {/* Continue with Google */}
-                    <button
-                        style={{
-                            width: "100%",
-                            padding: "15px",
-                            background: "#ffffff",
-                            color: "#1a1a1a",
-                            border: "none",
-                            borderRadius: "12px",
-                            fontSize: "15px",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "10px",
-                            transition: "opacity 0.2s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-                    >
-                        <GoogleIcon />
-                        Continue with Google
-                    </button>
+                    <Link href="/login">
+                        <button
+                            style={{
+                                width: "100%",
+                                padding: "15px",
+                                background: "#ffffff",
+                                color: "#1a1a1a",
+                                border: "none",
+                                borderRadius: "12px",
+                                fontSize: "15px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "10px",
+                                transition: "opacity 0.2s",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                        >
+                            Already have an account
+                        </button>
+                    </Link>
                 </div>
             </div>
+
+            {showOtpModal && (
+                <OtpModal email={email} onClose={() => setShowOtpModal(false)} />
+            )}
         </div>
     );
 }
