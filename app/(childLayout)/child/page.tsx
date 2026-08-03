@@ -2,19 +2,94 @@
 
 import { useState } from "react";
 import { ChevronDown, Phone, Paperclip, Mic, Send, Waves } from "lucide-react";
+import { toast } from "sonner";
+import VoiceCallModal from "@/components/child/VoiceCallModal";
+import { useCreateCallMutation } from "@/redux/features/childSection/callApi";
+import { CharacterProfile, useGetCharacterListForChildApiQuery } from "@/redux/features/childSection/getAllCharacters";
+
+type CharacterOption = {
+    id: number;
+    name: string;
+    avatar: string | null;
+    initials: string;
+    color: string;
+};
+
+interface ActiveCall {
+    wsUrl: string;
+    characterName: string;
+    characterAvatar?: string;
+}
+
+const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "";
+const FALLBACK_AVATAR = "/images/character-placeholder.png";
+
+function resolveAvatarSrc(profileImage: string | null) {
+    if (!profileImage) return FALLBACK_AVATAR;
+    if (profileImage.startsWith("http")) return profileImage;
+    return `${MEDIA_BASE_URL}${profileImage}`;
+}
 
 // Mock characters for the selector
-const CHARACTERS = [
+const FALLBACK_CHARACTERS: CharacterOption[] = [
     { id: 1, name: "Dad", avatar: null, initials: "D", color: "#3b82f6" },
     { id: 2, name: "Mom", avatar: null, initials: "M", color: "#ec4899" },
     { id: 3, name: "Teacher", avatar: null, initials: "T", color: "#8b5cf6" },
 ];
 
-export default function ParentHomePage() {
+const getCharacterInitials = (name: string) =>
+    name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase() || "C";
+
+const getCharacterColor = (index: number) => ["#3b82f6", "#ec4899", "#8b5cf6", "#10b981", "#f59e0b"][index % 5];
+
+const mapCharacterToOption = (character: CharacterProfile, index: number): CharacterOption => ({
+    id: character.id,
+    name: character.name,
+    avatar: character.profile_image,
+    initials: getCharacterInitials(character.name),
+    color: getCharacterColor(index),
+});
+
+export default function ChildHomePage() {
+    const { data: characters = [], isLoading: isCharactersLoading } = useGetCharacterListForChildApiQuery();
+    const [createCall, { isLoading: isCalling }] = useCreateCallMutation();
     const [message, setMessage] = useState("");
-    const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
+    const [selectedChar, setSelectedChar] = useState<CharacterOption>(FALLBACK_CHARACTERS[0]);
     const [showCharPicker, setShowCharPicker] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+
+    const characterOptions = characters.length > 0
+        ? characters.map((character, index) => mapCharacterToOption(character, index))
+        : FALLBACK_CHARACTERS;
+
+    const resolvedSelectedChar = characterOptions.find((char) => char.id === selectedChar.id)
+        ?? characterOptions[0]
+        ?? FALLBACK_CHARACTERS[0];
+
+    const handleCallStart = async () => {
+        if (isCalling || isCharactersLoading) {
+            return;
+        }
+
+        try {
+            const response = await createCall(selectedChar.id).unwrap();
+            setActiveCall({
+                wsUrl: response.data.ws_url,
+                characterName: response.data.character.name,
+                characterAvatar: resolveAvatarSrc(selectedChar.avatar),
+            });
+        } catch (error) {
+            console.error(error);
+            toast.error("Couldn't start the call. Please try again.");
+        }
+    };
 
     // Greeting based on time of day
     const hour = new Date().getHours();
@@ -47,6 +122,8 @@ export default function ParentHomePage() {
 
             {/* Phone call FAB — top right */}
             <button
+                onClick={handleCallStart}
+                disabled={isCalling}
                 style={{
                     position: "absolute",
                     top: 24,
@@ -56,19 +133,22 @@ export default function ParentHomePage() {
                     borderRadius: "50%",
                     background: "linear-gradient(135deg, #10b981, #059669)",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: isCalling ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: "0 4px 20px rgba(16,185,129,0.4)",
                     transition: "transform 0.2s, box-shadow 0.2s",
                     zIndex: 10,
+                    opacity: isCalling ? 0.85 : 1,
                 }}
                 onMouseEnter={(e) => {
+                    if (isCalling) return;
                     e.currentTarget.style.transform = "scale(1.08)";
                     e.currentTarget.style.boxShadow = "0 6px 28px rgba(16,185,129,0.55)";
                 }}
                 onMouseLeave={(e) => {
+                    if (isCalling) return;
                     e.currentTarget.style.transform = "scale(1)";
                     e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.4)";
                 }}
@@ -147,7 +227,7 @@ export default function ParentHomePage() {
                                 width: 32,
                                 height: 32,
                                 borderRadius: "50%",
-                                background: selectedChar.color,
+                                background: resolvedSelectedChar.color,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -157,7 +237,7 @@ export default function ParentHomePage() {
                                 flexShrink: 0,
                             }}
                         >
-                            {selectedChar.initials}
+                            {resolvedSelectedChar.initials}
                         </div>
                         <ChevronDown
                             className="w-4 h-4"
@@ -182,7 +262,7 @@ export default function ParentHomePage() {
                                 zIndex: 20,
                             }}
                         >
-                            {CHARACTERS.map((char) => (
+                            {characterOptions.map((char) => (
                                 <button
                                     key={char.id}
                                     onClick={() => {
@@ -415,6 +495,15 @@ export default function ParentHomePage() {
                     </button>
                 </div>
             </div>
+
+            {activeCall && (
+                <VoiceCallModal
+                    wsUrl={activeCall.wsUrl}
+                    characterName={activeCall.characterName}
+                    characterAvatar={activeCall.characterAvatar}
+                    onClose={() => setActiveCall(null)}
+                />
+            )}
         </div>
     );
 }
