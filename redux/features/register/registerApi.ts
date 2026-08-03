@@ -11,7 +11,7 @@ const authApi = baseApi.injectEndpoints({
         }),
         verifyOtp: builder.mutation({
             query: (payload) => ({
-                url: 'auth/verify-otp/', // NOTE: you had this pointing at 'auth/register/' — double check this endpoint on your backend
+                url: 'auth/verify-otp/',
                 method: 'POST',
                 body: payload,
             }),

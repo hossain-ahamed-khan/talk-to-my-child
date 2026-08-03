@@ -1,6 +1,20 @@
 "use client";
 
+import { useState } from "react";
+import { CharacterProfile, useGetCharacterListForChildApiQuery } from "@/redux/features/childSection/getAllCharacters";
+import { useCreateCallMutation } from "@/redux/features/childSection/callApi";
 import Image from "next/image";
+import { toast } from "sonner";
+import VoiceCallModal from "@/components/child/VoiceCallModal";
+
+const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "";
+const FALLBACK_AVATAR = "/images/character-placeholder.png";
+
+interface ActiveCall {
+    wsUrl: string;
+    characterName: string;
+    characterAvatar?: string;
+}
 
 const PhoneIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -17,24 +31,37 @@ const MicIcon = () => (
     </svg>
 );
 
-type Character = {
-    id: number;
-    name: string;
-    specialty: string;
-    available: boolean;
-    avatar: string;
-};
+function resolveAvatarSrc(profileImage: string | null) {
+    if (!profileImage) return FALLBACK_AVATAR;
+    if (profileImage.startsWith("http")) return profileImage;
+    return `${MEDIA_BASE_URL}${profileImage}`;
+}
 
-const characters: Character[] = [
-    { id: 1, name: "Dr. Sarah", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=47" },
-    { id: 2, name: "Dr. Emily", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=44" },
-    { id: 3, name: "Dr. James", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=68" },
-    { id: 4, name: "Dr. Maria", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=49" },
-    { id: 5, name: "Dr. Aiden", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=52" },
-    { id: 6, name: "Dr. Priya", specialty: "Medical & Hygiene Expert", available: true, avatar: "https://i.pravatar.cc/150?img=45" },
-];
+function CharacterCard({
+    character,
+    onCallStart,
+}: {
+    character: CharacterProfile;
+    onCallStart: (call: ActiveCall) => void;
+}) {
+    const avatarSrc = resolveAvatarSrc(character.profile_image);
+    const isAvailable = true;
+    const [createCall, { isLoading: isCalling }] = useCreateCallMutation();
 
-function CharacterCard({ character }: { character: Character }) {
+    const handleCall = async () => {
+        try {
+            const res = await createCall(character.id).unwrap();
+            onCallStart({
+                wsUrl: res.data.ws_url,
+                characterName: res.data.character.name,
+                characterAvatar: character.profile_image ? avatarSrc : undefined,
+            });
+        } catch (err) {
+            console.error(err);
+            toast.error("Couldn't start the call. Please try again.");
+        }
+    };
+
     return (
         <div
             className="character-card"
@@ -52,43 +79,68 @@ function CharacterCard({ character }: { character: Character }) {
             onMouseEnter={e => (e.currentTarget.style.borderColor = "#1e3a5f")}
             onMouseLeave={e => (e.currentTarget.style.borderColor = "#162845")}
         >
-            {/* Top row: avatar + name + call button */}
             <div className="character-card-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div className="character-card-profile" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    {/* Avatar */}
                     <div style={{ position: "relative", flexShrink: 0 }}>
-                        <Image
-                            src={character.avatar}
-                            alt={character.name}
-                            width={60}
-                            height={60}
-                            style={{
-                                borderRadius: 10,
-                                objectFit: "cover",
-                                display: "block",
-                            }}
-                        />
-                        {character.available && (
-                            <span style={{
-                                position: "absolute",
-                                bottom: -3,
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                width: 10,
-                                height: 10,
-                                backgroundColor: "#11b780",
-                                borderRadius: "50%",
-                                border: "2px solid #0f1e33",
-                            }} />
+                        {character.profile_image ? (
+                            <Image
+                                src={avatarSrc}
+                                alt={character.name}
+                                width={60}
+                                height={60}
+                                style={{
+                                    borderRadius: 10,
+                                    objectFit: "cover",
+                                    display: "block",
+                                }}
+                            />
+                        ) : (
+                            <div
+                                style={{
+                                    width: 60,
+                                    height: 60,
+                                    borderRadius: 10,
+                                    backgroundColor: "#1e3a5f",
+                                    color: "#fff",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 22,
+                                    fontWeight: 700,
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                {character.name
+                                    .trim()
+                                    .split(/\s+/)
+                                    .slice(0, 2)
+                                    .map((word) => word[0])
+                                    .join("")}
+                            </div>
+                        )}
+
+                        {isAvailable && (
+                            <span
+                                style={{
+                                    position: "absolute",
+                                    bottom: -3,
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    width: 10,
+                                    height: 10,
+                                    backgroundColor: "#11b780",
+                                    borderRadius: "50%",
+                                    border: "2px solid #0f1e33",
+                                }}
+                            />
                         )}
                     </div>
 
-                    {/* Name + availability */}
                     <div>
                         <p style={{ fontSize: 16, fontWeight: 700, color: "#ffffff", margin: "0 0 4px" }}>
                             {character.name}
                         </p>
-                        {character.available && (
+                        {isAvailable && (
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span style={{
                                     width: 8,
@@ -105,9 +157,10 @@ function CharacterCard({ character }: { character: Character }) {
                     </div>
                 </div>
 
-                {/* Call button */}
                 <button
                     className="character-call-btn"
+                    onClick={handleCall}
+                    disabled={isCalling}
                     style={{
                         width: 46,
                         height: 46,
@@ -117,11 +170,13 @@ function CharacterCard({ character }: { character: Character }) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        cursor: "pointer",
+                        cursor: isCalling ? "default" : "pointer",
                         flexShrink: 0,
+                        opacity: isCalling ? 0.6 : 1,
                         transition: "background-color 0.2s, transform 0.15s",
                     }}
                     onMouseEnter={e => {
+                        if (isCalling) return;
                         (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#0d9668";
                         (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.07)";
                     }}
@@ -134,15 +189,37 @@ function CharacterCard({ character }: { character: Character }) {
                 </button>
             </div>
 
-            {/* Specialty */}
             <p style={{ fontSize: 12, color: "#475569", margin: 0, paddingLeft: 2 }}>
-                {character.specialty}
+                {character.role}
             </p>
         </div>
     );
 }
 
+function CharactersSkeleton() {
+    return (
+        <div className="characters-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                    key={i}
+                    style={{
+                        backgroundColor: "#0f1e33",
+                        border: "1px solid #162845",
+                        borderRadius: 14,
+                        padding: "16px 18px 14px",
+                        height: 96,
+                        animation: "pulse 1.5s ease-in-out infinite",
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
 export default function PopularCharacters() {
+    const { data: characters, isLoading, isError, refetch } = useGetCharacterListForChildApiQuery();
+    const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+
     return (
         <div style={{
             minHeight: "100vh",
@@ -152,72 +229,42 @@ export default function PopularCharacters() {
         }}>
             <style>{`
                 * { box-sizing: border-box; }
-                .characters-shell {
-                    width: 100%;
-                    margin: 0;
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
                 }
-                .characters-header {
-                    width: 100%;
-                    gap: 12px;
-                }
+                .characters-shell { width: 100%; margin: 0; }
+                .characters-header { width: 100%; gap: 12px; }
                 .characters-grid {
                     width: 100%;
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
                     gap: 12px;
                 }
-                .character-card {
-                    width: 100%;
-                }
+                .character-card { width: 100%; }
                 .characters-fab {
                     right: clamp(10px, 2.5vw, 28px);
                     bottom: clamp(10px, 2.5vw, 28px);
                 }
                 @media (max-width: 900px) {
-                    .characters-grid {
-                        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                    }
+                    .characters-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
                 }
                 @media (max-width: 640px) {
-                    .characters-header {
-                        flex-wrap: wrap;
-                        align-items: flex-start !important;
-                    }
-                    .characters-grid {
-                        grid-template-columns: 1fr;
-                        gap: 10px;
-                    }
-                    .character-card {
-                        padding: 14px;
-                    }
-                    .character-card-top {
-                        align-items: flex-start !important;
-                    }
-                    .character-card-profile {
-                        min-width: 0;
-                    }
-                    .character-call-btn {
-                        width: 42px !important;
-                        height: 42px !important;
-                    }
-                    .characters-fab {
-                        width: 48px !important;
-                        height: 48px !important;
-                    }
+                    .characters-header { flex-wrap: wrap; align-items: flex-start !important; }
+                    .characters-grid { grid-template-columns: 1fr; gap: 10px; }
+                    .character-card { padding: 14px; }
+                    .character-card-top { align-items: flex-start !important; }
+                    .character-card-profile { min-width: 0; }
+                    .character-call-btn { width: 42px !important; height: 42px !important; }
+                    .characters-fab { width: 48px !important; height: 48px !important; }
                 }
                 @media (max-width: 380px) {
-                    .character-card-top {
-                        flex-direction: column;
-                    }
-                    .character-call-btn {
-                        align-self: flex-end;
-                    }
+                    .character-card-top { flex-direction: column; }
+                    .character-call-btn { align-self: flex-end; }
                 }
             `}</style>
 
             <div className="characters-shell" style={{ width: "100%", margin: "0 auto" }}>
-
-                {/* Header */}
                 <div className="characters-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                     <h2 style={{ fontSize: 20, fontWeight: 800, color: "#ffffff", margin: 0 }}>
                         Popular Characters
@@ -235,16 +282,59 @@ export default function PopularCharacters() {
                     </button>
                 </div>
 
-                {/* 2-column grid */}
-                <div className="characters-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-                    {characters.map(c => (
-                        <CharacterCard key={c.id} character={c} />
-                    ))}
-                </div>
+                {isLoading && <CharactersSkeleton />}
 
+                {isError && (
+                    <div style={{
+                        backgroundColor: "#0f1e33",
+                        border: "1px solid #3a1e1e",
+                        borderRadius: 14,
+                        padding: "24px",
+                        textAlign: "center",
+                    }}>
+                        <p style={{ color: "#f87171", fontSize: 14, margin: "0 0 12px" }}>
+                            Couldn&apos;t load characters. Please try again.
+                        </p>
+                        <button
+                            onClick={() => refetch()}
+                            style={{
+                                background: "none",
+                                border: "1px solid #11b780",
+                                color: "#11b780",
+                                borderRadius: 8,
+                                padding: "6px 14px",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                            }}
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
+
+                {!isLoading && !isError && characters && characters.length === 0 && (
+                    <p style={{ color: "#475569", fontSize: 14 }}>No characters available yet.</p>
+                )}
+
+                {!isLoading && !isError && characters && characters.length > 0 && (
+                    <div className="characters-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                        {characters.map(c => (
+                            <CharacterCard key={c.id} character={c} onCallStart={setActiveCall} />
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* Floating mic button */}
+            {activeCall && (
+                <VoiceCallModal
+                    wsUrl={activeCall.wsUrl}
+                    characterName={activeCall.characterName}
+                    characterAvatar={activeCall.characterAvatar}
+                    onClose={() => setActiveCall(null)}
+                />
+            )}
+
             <button
                 className="characters-fab"
                 style={{

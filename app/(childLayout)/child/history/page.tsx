@@ -1,46 +1,7 @@
 "use client";
-import Image from "next/image";
-import { useState } from "react";
 
-interface CallRecord {
-    id: number;
-    contactName: string;
-    contactImage: string;
-    duration: string;
-    date: string;
-    time: string;
-    topic: string;
-}
+import { ConversationSession, useGetCallHistoryListQuery } from "@/redux/features/childSection/callHistoryApi";
 
-const mockCalls: CallRecord[] = [
-    {
-        id: 1,
-        contactName: "Dad",
-        contactImage: "https://i.pravatar.cc/150?img=52",
-        duration: "2M 45S",
-        date: "Oct 24, 2023",
-        time: "15:20",
-        topic: "Fractions homework help",
-    },
-    {
-        id: 2,
-        contactName: "Dad",
-        contactImage: "https://i.pravatar.cc/150?img=52",
-        duration: "2M 45S",
-        date: "Oct 24, 2023",
-        time: "15:20",
-        topic: "Fractions homework help",
-    },
-    {
-        id: 3,
-        contactName: "Dad",
-        contactImage: "https://i.pravatar.cc/150?img=52",
-        duration: "2M 45S",
-        date: "Oct 24, 2023",
-        time: "15:20",
-        topic: "Fractions homework help",
-    },
-];
 
 const CalendarIcon = () => (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -71,125 +32,80 @@ const MicIcon = () => (
     </svg>
 );
 
-const ChevronDown = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M4 6l4 4 4-4" stroke="#10996f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-);
+function getInitials(name: string) {
+    return name
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("");
+}
 
-function CallCard({ call, index }: { call: CallRecord; index: number }) {
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
+function formatTime(iso: string) {
+    return new Date(iso).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    });
+}
+
+function CallCard({ call, index }: { call: ConversationSession; index: number }) {
     return (
         <div
-            className="call-card"
+            className="call-card flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-5 py-4 transition-all duration-200 hover:translate-x-0.5 hover:border-[rgba(16,153,111,0.4)] hover:bg-white/[0.07] max-[768px]:gap-3 max-[768px]:p-3.5 max-[480px]:rounded-xl max-[480px]:p-3"
             style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                width: "100%",
-                cursor: "pointer",
-                transition: "background 0.2s, border-color 0.2s, transform 0.15s",
-                animation: `fadeSlideIn 0.4s ease both`,
+                animation: "fadeSlideIn 0.4s ease both",
                 animationDelay: `${index * 0.07}s`,
             }}
-            onMouseEnter={e => {
-                const el = e.currentTarget as HTMLDivElement;
-                el.style.background = "rgba(255,255,255,0.07)";
-                el.style.borderColor = "rgba(16,153,111,0.4)";
-                el.style.transform = "translateX(2px)";
-            }}
-            onMouseLeave={e => {
-                const el = e.currentTarget as HTMLDivElement;
-                el.style.background = "rgba(255,255,255,0.04)";
-                el.style.borderColor = "rgba(255,255,255,0.07)";
-                el.style.transform = "translateX(0)";
-            }}
         >
-            {/* Avatar */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    border: "2px solid rgba(16,153,111,0.45)",
-                }}>
-                    <Image
-                        src={call.contactImage}
-                        alt={call.contactName}
-                        width={52}
-                        height={52}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                </div>
+            {/* Avatar (initials, since API doesn't return an image) */}
+            <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-2 border-[rgba(16,153,111,0.45)] bg-[rgba(16,153,111,0.15)] font-['DM_Sans',sans-serif] text-base font-bold text-[#10996f]">
+                {getInitials(call.character_name)}
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                    <span style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "16px",
-                        color: "#F9FAFB",
-                        letterSpacing: "-0.01em",
-                    }}>
-                        {call.contactName}
-                    </span>
-                    <span style={{
-                        background: "rgba(16,153,111,0.18)",
-                        color: "#10996f",
-                        fontFamily: "'DM Mono', monospace",
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        letterSpacing: "0.08em",
-                        padding: "2px 8px",
-                        borderRadius: "20px",
-                        border: "1px solid rgba(16,153,111,0.35)",
-                    }}>
-                        {call.duration}
+            <div className="min-w-0 flex-1">
+                <div className="mb-1.5 flex items-center gap-2.5">
+                    <span className="font-['DM_Sans',sans-serif] text-base font-bold tracking-[-0.01em] text-gray-50">
+                        {call.character_name}
                     </span>
                 </div>
 
-                <div className="call-meta" style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div className="call-meta mb-2 flex items-center gap-3.5 max-[768px]:flex-wrap max-[768px]:gap-y-1.5">
+                    <span className="flex items-center gap-1.5">
                         <CalendarIcon />
-                        <span style={{
-                            fontFamily: "'DM Sans', sans-serif",
-                            fontSize: "12px",
-                            color: "#9CA3AF",
-                        }}>{call.date}</span>
+                        <span className="font-['DM_Sans',sans-serif] text-xs text-gray-400">
+                            {formatDate(call.started_at)}
+                        </span>
                     </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span className="flex items-center gap-1.5">
                         <ClockIcon />
-                        <span style={{
-                            fontFamily: "'DM Sans', sans-serif",
-                            fontSize: "12px",
-                            color: "#9CA3AF",
-                        }}>{call.time}</span>
+                        <span className="font-['DM_Sans',sans-serif] text-xs text-gray-400">
+                            {formatTime(call.started_at)}
+                        </span>
                     </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "13px",
-                        color: "#6B7280",
-                    }}>Topic:</span>
-                    <span style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "13px",
-                        color: "#D1D5DB",
-                        fontStyle: "italic",
-                    }}>&quot;{call.topic}&quot;</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-['DM_Sans',sans-serif] text-[13px] text-gray-500">
+                        Last message:
+                    </span>
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap font-['DM_Sans',sans-serif] text-[13px] italic text-gray-300">
+                        &quot;{call.last_message.content}&quot;
+                    </span>
                 </div>
             </div>
 
             {/* Arrow */}
-            <div style={{ flexShrink: 0, opacity: 0.7 }}>
+            <div className="shrink-0 opacity-70">
                 <ChevronRight />
             </div>
         </div>
@@ -197,29 +113,14 @@ function CallCard({ call, index }: { call: CallRecord; index: number }) {
 }
 
 export default function CallHistory() {
-    const [calls, setCalls] = useState<CallRecord[]>(mockCalls);
-    const [loading, setLoading] = useState(false);
+    const { data, isLoading, isError } = useGetCallHistoryListQuery();
 
-    const handleLoadMore = () => {
-        setLoading(true);
-        setTimeout(() => {
-            const next = mockCalls.map(c => ({ ...c, id: c.id + calls.length }));
-            setCalls(prev => [...prev, ...next]);
-            setLoading(false);
-        }, 800);
-    };
+    const calls = data?.data ?? [];
 
     return (
         <>
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@500;600&display=swap');
-
-                :root {
-                    --primary: #10996f;
-                    --primary-soft: rgba(16,153,111,0.35);
-                    --primary-pulse: rgba(16,153,111,0.45);
-                    --page-bg: #0B1A24;
-                }
 
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(12px); }
@@ -227,169 +128,61 @@ export default function CallHistory() {
         }
 
         @keyframes pulse-mic {
-                    0%, 100% { box-shadow: 0 0 0 0 var(--primary-pulse); }
-                    50% { box-shadow: 0 0 0 10px rgba(16,153,111,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(16,153,111,0.45); }
+          50% { box-shadow: 0 0 0 10px rgba(16,153,111,0); }
         }
-
-                .history-page {
-                    width: 100%;
-                    min-height: 100vh;
-                    box-sizing: border-box;
-                }
 
         .mic-btn {
           animation: pulse-mic 2.5s ease-in-out infinite;
         }
-
-        .load-more-btn {
-          transition: background 0.2s, border-color 0.2s;
-        }
-
-        .load-more-btn:hover {
-          background: rgba(255,255,255,0.05) !important;
-                    border-color: var(--primary-soft) !important;
-                }
-
-                @media (max-width: 1024px) {
-                    .history-page {
-                        padding: 32px 20px !important;
-                    }
-                }
-
-                @media (max-width: 768px) {
-                    .history-page {
-                        padding: 24px 14px !important;
-                    }
-
-                    .history-title {
-                        font-size: 24px !important;
-                    }
-
-                    .call-card {
-                        padding: 14px !important;
-                        gap: 12px !important;
-                    }
-
-                    .call-meta {
-                        flex-wrap: wrap;
-                        row-gap: 6px;
-                    }
-
-                    .mic-btn {
-                        width: 50px !important;
-                        height: 50px !important;
-                        right: 14px !important;
-                        bottom: 14px !important;
-                    }
-                }
-
-                @media (max-width: 480px) {
-                    .history-page {
-                        padding: 20px 10px !important;
-                    }
-
-                    .history-title {
-                        font-size: 21px !important;
-                    }
-
-                    .call-card {
-                        padding: 12px !important;
-                        border-radius: 12px !important;
-                    }
-        }
       `}</style>
 
-            <div style={{
-                width: "100%",
-                minHeight: "100vh",
-                background: "var(--page-bg)",
-                fontFamily: "'DM Sans', sans-serif",
-                padding: "40px 24px",
-                position: "relative",
-                boxSizing: "border-box",
-            }} className="history-page">
+            <div className="history-page relative box-border min-h-screen w-full bg-[#0B1A24] px-2.5 py-5 font-['DM_Sans',sans-serif] sm:px-3.5 sm:py-6 md:px-5 md:py-8 lg:px-6 lg:py-10">
                 {/* Header */}
-                <div style={{ marginBottom: 32, animation: "fadeSlideIn 0.4s ease both" }}>
-                    <h1 style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "28px",
-                        color: "#F9FAFB",
-                        margin: 0,
-                        letterSpacing: "-0.03em",
-                    }} className="history-title">Call History</h1>
-                    <p style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "14px",
-                        color: "#10996f",
-                        margin: "6px 0 0",
-                        fontWeight: 400,
-                    }}>
+                <div
+                    className="mb-8"
+                    style={{ animation: "fadeSlideIn 0.4s ease both" }}
+                >
+                    <h1 className="history-title m-0 font-['DM_Sans',sans-serif] text-xl font-bold tracking-[-0.03em] text-gray-50 sm:text-2xl lg:text-[28px]">
+                        Call History
+                    </h1>
+                    <p className="mt-1.5 font-['DM_Sans',sans-serif] text-sm font-normal text-[#10996f]">
                         Review and replay your recent learning conversations.
                     </p>
                 </div>
 
-                {/* Cards */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {calls.map((call, i) => (
-                        <CallCard key={`${call.id}-${i}`} call={call} index={i} />
-                    ))}
-                </div>
+                {/* Loading state */}
+                {isLoading && (
+                    <p className="font-['DM_Sans',sans-serif] text-sm text-gray-400">
+                        Loading call history...
+                    </p>
+                )}
 
-                {/* Load More */}
-                <button
-                    className="load-more-btn"
-                    onClick={handleLoadMore}
-                    disabled={loading}
-                    style={{
-                        marginTop: 16,
-                        width: "100%",
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        borderRadius: "14px",
-                        padding: "16px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        cursor: loading ? "not-allowed" : "pointer",
-                        color: "#10996f",
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: 600,
-                        fontSize: "15px",
-                        letterSpacing: "-0.01em",
-                        opacity: loading ? 0.6 : 1,
-                        animation: "fadeSlideIn 0.4s ease both",
-                        animationDelay: "0.3s",
-                    }}
-                >
-                    {loading ? "Loading..." : (
-                        <>
-                            Load More History
-                            <ChevronDown />
-                        </>
-                    )}
-                </button>
+                {/* Error state */}
+                {isError && (
+                    <p className="font-['DM_Sans',sans-serif] text-sm text-red-400">
+                        Failed to load call history. Please try again.
+                    </p>
+                )}
+
+                {/* Empty state */}
+                {!isLoading && !isError && calls.length === 0 && (
+                    <p className="font-['DM_Sans',sans-serif] text-sm text-gray-400">
+                        No calls yet.
+                    </p>
+                )}
+
+                {/* Cards */}
+                {!isLoading && !isError && calls.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                        {calls.map((call, i) => (
+                            <CallCard key={call.id} call={call} index={i} />
+                        ))}
+                    </div>
+                )}
 
                 {/* Floating mic button */}
-                <button
-                    className="mic-btn"
-                    style={{
-                        position: "fixed",
-                        bottom: 32,
-                        right: 32,
-                        width: 56,
-                        height: 56,
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg, #10996f, #0d7f5c)",
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 4px 24px rgba(16,153,111,0.35)",
-                    }}
-                >
+                <button className="mic-btn fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full border-none bg-gradient-to-br from-[#10996f] to-[#0d7f5c] shadow-[0_4px_24px_rgba(16,153,111,0.35)] max-[768px]:bottom-3.5 max-[768px]:right-3.5 max-[768px]:h-[50px] max-[768px]:w-[50px]">
                     <MicIcon />
                 </button>
             </div>
