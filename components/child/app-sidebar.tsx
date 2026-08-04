@@ -4,10 +4,10 @@ import {
     House,
     Users,
     History,
-    Settings,
+    LogOut,
     Zap,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     Sidebar,
     SidebarContent,
@@ -23,6 +23,8 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import mainLogo from "@/public/images/main-logo.png";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { logout, selectUser } from "@/redux/features/auth/authSlice";
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -65,9 +67,19 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const user = useAppSelector(selectUser);
     const pathname = usePathname();
+    const router = useRouter();
+    const dispatch = useAppDispatch();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
+
+    const handleLogout = () => {
+        dispatch(logout());
+        router.push("/login");
+    };
+
+    const userInitial = user?.full_name?.trim()?.charAt(0).toUpperCase() ?? "S";
 
     return (
         <Sidebar
@@ -118,7 +130,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             Current Balance
                         </div>
                         <div className="flex items-end justify-between mb-2">
-                            <span className="text-white font-bold text-2xl">124</span>
+                            <span className="text-white font-bold text-2xl">{user?.credit_balance ?? 0}</span>
                             <span className="text-[#8b9ab0] text-[11px]">AI Credits</span>
                         </div>
                         {/* Progress bar */}
@@ -135,18 +147,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         {/* Avatar */}
                         <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden"
                             style={{ background: "linear-gradient(135deg, #f97316, #ec4899)" }}>
-                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">S</div>
+                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{userInitial}</div>
                         </div>
                         {!isCollapsed && (
                             <div>
-                                <div className="text-white font-semibold text-[13px]">Sarah Jenkins</div>
-                                <div className="text-[#4ade80] text-[11px]">Premium Member</div>
+                                <div className="text-white font-semibold text-[13px]">{user?.full_name ?? "Guest"}</div>
+                                <div className="text-[#4ade80] text-[11px]">Referral Code: {user?.referral_code ?? "-"}</div>
                             </div>
                         )}
                     </div>
                     {!isCollapsed && (
-                        <button className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                            <Settings className="w-4 h-4" />
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                            title="Logout"
+                        >
+                            <LogOut className="w-4 h-4" />
                         </button>
                     )}
                 </div>
