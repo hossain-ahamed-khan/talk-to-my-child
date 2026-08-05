@@ -25,6 +25,7 @@ import mainLogo from "@/public/images/main-logo.png";
 import Image from "next/image";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import { selectUser, logout } from "@/redux/features/auth/authSlice";
+import Swal from "sweetalert2";
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -75,8 +76,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const isCollapsed = state === "collapsed";
 
     const handleLogout = () => {
-        dispatch(logout());
-        router.push("/login");
+        Swal.fire({
+            title: "Log out?",
+            text: "You will need to sign in again to access your account.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, log out",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                dispatch(logout());
+                router.push("/login");
+            }
+        });
     };
 
     return (
