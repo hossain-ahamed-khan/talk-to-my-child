@@ -4,7 +4,7 @@ const sendOtpApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         sendOtp: builder.mutation({
             query: (email) => ({
-                url: 'api/send-otp/',
+                url: 'auth/password-reset-request/',
                 method: 'POST',
                 body: email
             })
@@ -20,7 +20,7 @@ const enterOtpApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         enterOtp: builder.mutation({
             query: (formData) => ({
-                url: 'api/otp-verify/',
+                url: 'auth/verify-otp/',
                 method: 'POST',
                 body: formData
             })
@@ -36,7 +36,7 @@ const setNewPasswordApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         setNewPassword: builder.mutation({
             query: (formData) => ({
-                url: 'api/forgot-password-reset/',
+                url: 'auth/password-reset/',
                 method: 'POST',
                 body: formData
             })

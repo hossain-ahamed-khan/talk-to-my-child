@@ -358,9 +358,11 @@ export default function TalkToMyChildLogin() {
                             </div>
                             <span style={{ fontSize: "13px", color: "#8fa89f" }}>Remember Password</span>
                         </label>
-                        <button type="button" style={{ background: "none", border: "none", color: "#8fa89f", fontSize: "13px", cursor: "pointer", padding: 0 }}>
-                            Forget Password?
-                        </button>
+                        <Link href="forget-password">
+                            <button type="button" style={{ background: "none", border: "none", color: "#8fa89f", fontSize: "13px", cursor: "pointer", padding: 0 }}>
+                                Forget Password?
+                            </button>
+                        </Link>
                     </div>
 
                     {/* Continue with Email */}
