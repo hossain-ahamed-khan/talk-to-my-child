@@ -227,7 +227,7 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                                 <input
                                     value={form.name}
                                     onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                                    placeholder="George Blaze"
+                                    placeholder="Enter your child name"
                                     style={styles.input}
                                 />
                             </label>
@@ -241,7 +241,7 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                                         style={styles.select}
                                     >
                                         <option value="" disabled>
-                                            12
+                                            Select Age
                                         </option>
                                         {Array.from({ length: 18 }).map((_, index) => {
                                             const age = index + 3;
@@ -261,7 +261,7 @@ export default function CreateChildModal({ open, onClose, onCreate }: CreateChil
                                 <input
                                     value={form.email}
                                     onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                                    placeholder="Dad"
+                                    placeholder="Give an Email"
                                     style={styles.input}
                                 />
                             </label>
