@@ -89,11 +89,6 @@ const BrandPanel = () => (
             AI-powered insights tailored to your child&apos;s personality.
         </p>
 
-        {/* CTA */}
-        <button className="mb-9 rounded-full bg-[#2dd67b] px-8 py-4 text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90">
-            Get Started Now
-        </button>
-
         {/* Social proof */}
         <div className="flex items-center gap-3">
             <div className="flex">

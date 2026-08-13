@@ -345,7 +345,7 @@ export default function AccountSettings() {
                 </div>
 
                 {/* ── Help & Support ── */}
-                <div style={{ marginBottom: 24 }}>
+                {/* <div style={{ marginBottom: 24 }}>
                     <p style={{ ...label, marginBottom: 12 }}>HELP &amp; SUPPORT</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         {[
@@ -369,7 +369,7 @@ export default function AccountSettings() {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
 
                 {/* ── Account Settings heading + mic ── */}
                 <div className="section-header" style={{ marginBottom: 16 }}>

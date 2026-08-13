@@ -180,7 +180,7 @@ export default function TalkToMyChildLogin() {
                     </p>
 
                     {/* CTA */}
-                    <button
+                    {/* <button
                         style={{
                             background: "#2dd67b",
                             color: "#0d1b24",
@@ -197,7 +197,7 @@ export default function TalkToMyChildLogin() {
                         onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
                     >
                         Get Started Now
-                    </button>
+                    </button> */}
 
                     {/* Social proof */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

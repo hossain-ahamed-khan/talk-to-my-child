@@ -327,7 +327,7 @@ export default function ChildHomePage() {
             </div>
 
             {/* Audio waveform FAB — bottom right above input */}
-            <button
+            {/* <button
                 style={{
                     position: "absolute",
                     bottom: 88,
@@ -355,7 +355,7 @@ export default function ChildHomePage() {
                 }}
             >
                 <Waves className="w-5 h-5 text-white" />
-            </button>
+            </button> */}
 
             {/* Bottom message input bar */}
             <div
