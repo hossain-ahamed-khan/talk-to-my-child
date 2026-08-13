@@ -3,9 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-
-// Swap these for your actual RTK Query hooks, e.g.:
-// import { useForgotPasswordMutation, useVerifyOtpMutation, useResetPasswordMutation } from "@/redux/features/auth/authApi";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import type { SerializedError } from "@reduxjs/toolkit";
+import { getErrorMessage, useEnterOtpMutation, useSendOtpMutation, useSetNewPasswordMutation } from "@/redux/features/forgetPassword/forgetPasswordApi";
 
 const ChatIcon = () => (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -144,14 +144,15 @@ export default function ForgotPasswordFlow() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Holds the reset_token returned after OTP verification, needed for the final step
+    const [resetToken, setResetToken] = useState("");
 
     const router = useRouter();
 
-    // Replace this block with your RTK Query mutations, e.g.:
-    // const [forgotPassword] = useForgotPasswordMutation();
-    // const [verifyOtp] = useVerifyOtpMutation();
-    // const [resetPassword] = useResetPasswordMutation();
+    const [sendOtp, { isLoading: isSendingOtp }] = useSendOtpMutation();
+    const [enterOtp, { isLoading: isVerifyingOtp }] = useEnterOtpMutation();
+    const [setNewPassword, { isLoading: isResettingPassword }] = useSetNewPasswordMutation();
 
     const handleSendCode = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -159,15 +160,16 @@ export default function ForgotPasswordFlow() {
             toast.error("Please enter your email address.");
             return;
         }
-        setIsLoading(true);
         try {
-            // await forgotPassword({ email }).unwrap();
-            toast.success("Verification code sent to your email.");
+            const res = await sendOtp({ email }).unwrap();
+            if (!res.success) {
+                toast.error(res.message || "Failed to send code.");
+                return;
+            }
+            toast.success(res.message);
             setStep("otp");
-        } catch (error: any) {
-            toast.error(error?.data?.message || error?.message || "Failed to send code.");
-        } finally {
-            setIsLoading(false);
+        } catch (error) {
+            toast.error(getErrorMessage(error as FetchBaseQueryError | SerializedError, "Failed to send code."));
         }
     };
 
@@ -177,15 +179,23 @@ export default function ForgotPasswordFlow() {
             toast.error("Please enter the 5 digit code.");
             return;
         }
-        setIsLoading(true);
         try {
-            // await verifyOtp({ email, otp }).unwrap();
-            toast.success("Code verified.");
+            const res = await enterOtp({
+                email,
+                otp_type: "PASSWORD_RESET",
+                otp,
+            }).unwrap();
+
+            if (!res.success || !res.data?.reset_token) {
+                toast.error(res.message || "Invalid or expired code.");
+                return;
+            }
+
+            toast.success(res.message);
+            setResetToken(res.data.reset_token);
             setStep("reset");
-        } catch (error: any) {
-            toast.error(error?.data?.message || error?.message || "Invalid or expired code.");
-        } finally {
-            setIsLoading(false);
+        } catch (error) {
+            toast.error(getErrorMessage(error as FetchBaseQueryError | SerializedError, "Invalid or expired code."));
         }
     };
 
@@ -199,15 +209,27 @@ export default function ForgotPasswordFlow() {
             toast.error("Passwords do not match.");
             return;
         }
-        setIsLoading(true);
+        if (!resetToken) {
+            toast.error("Your session has expired. Please start over.");
+            setStep("email");
+            return;
+        }
         try {
-            // await resetPassword({ email, otp, password }).unwrap();
-            toast.success("Password updated successfully.");
+            const res = await setNewPassword({
+                reset_token: resetToken,
+                new_password: password,
+                confirm_password: confirmPassword,
+            }).unwrap();
+
+            if (!res.success) {
+                toast.error(res.message || "Failed to reset password.");
+                return;
+            }
+
+            toast.success(res.message);
             router.replace("/login");
-        } catch (error: any) {
-            toast.error(error?.data?.message || error?.message || "Failed to reset password.");
-        } finally {
-            setIsLoading(false);
+        } catch (error) {
+            toast.error(getErrorMessage(error as FetchBaseQueryError | SerializedError, "Failed to reset password."));
         }
     };
 
@@ -239,10 +261,10 @@ export default function ForgotPasswordFlow() {
 
                         <button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isSendingOtp}
                             className="w-full rounded-xl bg-[#2dd67b] py-[15px] text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90 disabled:opacity-70"
                         >
-                            {isLoading ? "Sending..." : "Continue"}
+                            {isSendingOtp ? "Sending..." : "Continue"}
                         </button>
 
                         <p className="mt-6 text-center text-sm text-[#6b8f80]">
@@ -271,8 +293,8 @@ export default function ForgotPasswordFlow() {
                             <input
                                 type="text"
                                 inputMode="numeric"
-                                maxLength={5}
-                                placeholder="•••••"
+                                maxLength={6}
+                                placeholder="••••••"
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                                 className={`${inputClass} tracking-[6px]`}
@@ -281,16 +303,16 @@ export default function ForgotPasswordFlow() {
 
                         <button
                             type="submit"
-                            disabled={isLoading}
-                            className="w-full rounded-xl bg-[#2dd67b] py-[15px] text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90 disabled:opacity-70"
+                            disabled={isVerifyingOtp}
+                            className="cursor-pointer w-full rounded-xl bg-[#2dd67b] py-[15px] text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90 disabled:opacity-70"
                         >
-                            {isLoading ? "Verifying..." : "Continue"}
+                            {isVerifyingOtp ? "Verifying..." : "Continue"}
                         </button>
 
                         <button
                             type="button"
                             onClick={() => setStep("email")}
-                            className="mt-6 w-full text-center text-sm text-[#8fa89f] hover:text-white"
+                            className="cursor-pointer mt-6 w-full text-center text-sm text-[#8fa89f] hover:text-white"
                         >
                             ← Back
                         </button>
@@ -320,7 +342,7 @@ export default function ForgotPasswordFlow() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword((p) => !p)}
-                                    className="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center"
+                                    className="cursor-pointer absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center"
                                 >
                                     <EyeIcon show={showPassword} />
                                 </button>
@@ -340,7 +362,7 @@ export default function ForgotPasswordFlow() {
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword((p) => !p)}
-                                    className="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center"
+                                    className="cursor-pointer absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center"
                                 >
                                     <EyeIcon show={showConfirmPassword} />
                                 </button>
@@ -349,10 +371,10 @@ export default function ForgotPasswordFlow() {
 
                         <button
                             type="submit"
-                            disabled={isLoading}
-                            className="w-full rounded-xl bg-[#2dd67b] py-[15px] text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90 disabled:opacity-70"
+                            disabled={isResettingPassword}
+                            className="cursor-pointer w-full rounded-xl bg-[#2dd67b] py-[15px] text-[15px] font-bold text-[#0d1b24] transition-opacity hover:opacity-90 disabled:opacity-70"
                         >
-                            {isLoading ? "Updating..." : "Continue"}
+                            {isResettingPassword ? "Updating..." : "Continue"}
                         </button>
                     </CardShell>
                 )}
