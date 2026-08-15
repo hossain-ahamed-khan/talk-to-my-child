@@ -339,24 +339,26 @@ export default function TalkToMyChildRegister() {
                         Navigate difficult conversations and build stronger emotional bonds using AI-powered insights tailored to your child&apos;s personality.
                     </p>
 
-                    <button
-                        style={{
-                            background: "#2dd67b",
-                            color: "#0d1b24",
-                            border: "none",
-                            borderRadius: "100px",
-                            padding: "16px 32px",
-                            fontSize: "15px",
-                            fontWeight: "700",
-                            cursor: "pointer",
-                            marginBottom: "36px",
-                            transition: "opacity 0.2s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-                    >
-                        Get Started Now
-                    </button>
+                    <Link href="/login">
+                        <button
+                            style={{
+                                background: "#2dd67b",
+                                color: "#0d1b24",
+                                border: "none",
+                                borderRadius: "100px",
+                                padding: "16px 32px",
+                                fontSize: "15px",
+                                fontWeight: "700",
+                                cursor: "pointer",
+                                marginBottom: "36px",
+                                transition: "opacity 0.2s",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                        >
+                            Get Started Now
+                        </button>
+                    </Link>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <div style={{ display: "flex" }}>
