@@ -37,6 +37,14 @@ type CharacterCreateModalProps = {
     onCreate: (character: CharacterProfile) => void;
 };
 
+const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
+
+function resolveImageSrc(value: string | null) {
+    if (!value) return "";
+    if (value.startsWith("http")) return value;
+    return `${IMAGE_BASE_URL}${value}`;
+}
+
 const genderOptions = ["Female", "Male", "Neutral"];
 
 const voiceSourceMethods = [
@@ -80,7 +88,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
         }
 
         if (typeof form.profile_image === "string") {
-            setImagePreviewUrl(form.profile_image);
+            setImagePreviewUrl(resolveImageSrc(form.profile_image));
             return;
         }
 

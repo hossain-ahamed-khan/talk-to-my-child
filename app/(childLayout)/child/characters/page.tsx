@@ -7,7 +7,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import VoiceCallModal from "@/components/child/VoiceCallModal";
 
-const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "";
+const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
 const FALLBACK_AVATAR = "/images/character-placeholder.png";
 
 interface ActiveCall {
@@ -34,7 +34,7 @@ const MicIcon = () => (
 function resolveAvatarSrc(profileImage: string | null) {
     if (!profileImage) return FALLBACK_AVATAR;
     if (profileImage.startsWith("http")) return profileImage;
-    return `${MEDIA_BASE_URL}${profileImage}`;
+    return `${IMAGE_BASE_URL}${profileImage}`;
 }
 
 function CharacterCard({

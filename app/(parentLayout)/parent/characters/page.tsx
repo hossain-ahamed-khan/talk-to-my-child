@@ -12,6 +12,14 @@ import {
 } from "@/redux/features/parent/characters/characterList";
 import CharacterCreateModal, { CharacterFormState } from "@/components/parent/character-create-modal";
 
+const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
+
+function resolveImageSrc(value: string | null) {
+    if (!value) return "";
+    if (value.startsWith("http")) return value;
+    return `${IMAGE_BASE_URL}${value}`;
+}
+
 export const defaultCharacterForm: CharacterFormState = {
     name: "",
     gender: "Female",
@@ -111,7 +119,7 @@ export default function Characters() {
                                     <div style={styles.avatarWrap}>
                                         {character.profile_image ? (
                                             <Image
-                                                src={character.profile_image}
+                                                src={resolveImageSrc(character.profile_image)}
                                                 alt={character.name}
                                                 width={180}
                                                 height={180}
