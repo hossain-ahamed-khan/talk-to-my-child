@@ -1,419 +1,147 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Phone, Paperclip, Mic, Send, Waves } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { LoaderCircle, MessageCircle, Mic, Paperclip, Phone, Plus, Send, Wifi, WifiOff, X } from "lucide-react";
+import { useAppSelector } from "@/redux/hooks";
+import { selectToken, selectUser } from "@/redux/features/auth/authSlice";
 
-// Mock characters for the selector
-const CHARACTERS = [
-    { id: 1, name: "Dad", avatar: null, initials: "D", color: "#3b82f6" },
-    { id: 2, name: "Mom", avatar: null, initials: "M", color: "#ec4899" },
-    { id: 3, name: "Teacher", avatar: null, initials: "T", color: "#8b5cf6" },
-];
+type ChatMessage = { id?: number; role: "user" | "assistant" | "system"; content: string; created_at?: string };
+type ChatSession = { id: number; title: string; messages: ChatMessage[]; message_count: number; updated_at: string };
+type SocketEvent = { type?: string; message?: string; status?: boolean; data?: ChatMessage | { content?: string; role?: ChatMessage["role"] } };
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://talkapi.sobhoy.com").replace(/\/api\/v1\/?$/, "");
+const SESSIONS_URL = `${API_BASE}/api/v1/chat/sessions/`;
+const WS_BASE = API_BASE.replace(/^http/, "ws");
+
+function getErrorMessage(error: unknown) { return error instanceof Error ? error.message : "Something went wrong. Please try again."; }
+
+async function getApiError(response: Response, fallback: string) {
+    try {
+        const payload = await response.json() as { detail?: string; message?: string; error?: string };
+        return payload.detail || payload.message || payload.error || fallback;
+    } catch {
+        return fallback;
+    }
+}
 
 export default function ParentHomePage() {
+    const token = useAppSelector(selectToken);
+    const user = useAppSelector(selectUser);
+    const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
     const [message, setMessage] = useState("");
-    const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
-    const [showCharPicker, setShowCharPicker] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
+    const [connection, setConnection] = useState<"connecting" | "connected" | "disconnected">("disconnected");
+    const [error, setError] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
+    const socketRef = useRef<WebSocket | null>(null);
+    const activeSessionIdRef = useRef<number | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Greeting based on time of day
+    const updateSession = useCallback((sessionId: number, update: (session: ChatSession) => ChatSession) => {
+        setSessions((current) => current.map((session) => session.id === sessionId ? update(session) : session));
+        setActiveSession((current) => current?.id === sessionId ? update(current) : current);
+    }, []);
+
+    const connectToSession = useCallback((session: ChatSession) => {
+        if (!token) return;
+        socketRef.current?.close();
+        activeSessionIdRef.current = session.id;
+        setActiveSession(session);
+        setConnection("connecting");
+        setError(null);
+        const socket = new WebSocket(`${WS_BASE}/ws/chat/${session.id}/?token=${encodeURIComponent(token)}`);
+        socketRef.current = socket;
+        socket.onopen = () => setConnection("connecting");
+        socket.onclose = () => { if (activeSessionIdRef.current === session.id) setConnection("disconnected"); };
+        socket.onerror = () => setError("The chat connection failed. Please select the session again.");
+        socket.onmessage = (event) => {
+            try {
+                const payload = JSON.parse(event.data) as SocketEvent;
+                if (payload.type === "ready") { setConnection("connected"); return; }
+                if (payload.type === "typing") { setIsTyping(Boolean(payload.status)); return; }
+                if (payload.type === "error") { setError(payload.message || "Unable to generate a response right now."); setIsSending(false); return; }
+                if (payload.type !== "message") return;
+                const data = payload.data;
+                const incoming: ChatMessage = { role: data && "role" in data && data.role ? data.role : "assistant", content: data && "content" in data && data.content ? data.content : payload.message || "" };
+                if (!incoming.content) return;
+                if (incoming.role === "user") {
+                    return;
+                }
+                updateSession(session.id, (current) => ({ ...current, messages: [...current.messages, incoming], message_count: current.message_count + 1, updated_at: new Date().toISOString() }));
+                setIsSending(false);
+                setIsTyping(false);
+            } catch { setError("Received an unreadable response from the chat service."); setIsSending(false); }
+        };
+    }, [token, updateSession]);
+
+    const createSession = useCallback(async () => {
+        if (!token) return;
+        setIsCreating(true);
+        setError(null);
+        try {
+            const response = await fetch(SESSIONS_URL, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: "New conversation" }) });
+            if (!response.ok) throw new Error(await getApiError(response, `Unable to create a chat session (${response.status}).`));
+            const created = await response.json() as { id: number; title: string };
+            const session: ChatSession = { ...created, messages: [], message_count: 0, updated_at: new Date().toISOString() };
+            setSessions((current) => [session, ...current]);
+            connectToSession(session);
+        } catch (requestError) { setError(getErrorMessage(requestError)); }
+        finally { setIsCreating(false); }
+    }, [token, connectToSession]);
+
+    useEffect(() => {
+        if (!token) { setIsLoading(false); return; }
+        let cancelled = false;
+        const loadSessions = async () => {
+            try {
+                const response = await fetch(SESSIONS_URL, { headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) throw new Error(await getApiError(response, `Unable to load your conversations (${response.status}).`));
+                const loaded = await response.json() as ChatSession[];
+                if (cancelled) return;
+                setSessions(loaded);
+                if (loaded[0]) connectToSession(loaded[0]); else await createSession();
+            } catch (requestError) { if (!cancelled) setError(getErrorMessage(requestError)); }
+            finally { if (!cancelled) setIsLoading(false); }
+        };
+        void loadSessions();
+        return () => { cancelled = true; socketRef.current?.close(); };
+    }, [token, connectToSession, createSession]);
+
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activeSession?.messages.length, isTyping]);
+
+    const sendMessage = (event?: FormEvent) => {
+        event?.preventDefault();
+        const content = message.trim();
+        if (!content || !activeSession || !socketRef.current || connection !== "connected" || isSending) return;
+        updateSession(activeSession.id, (current) => ({ ...current, messages: [...current.messages, { role: "user", content }], message_count: current.message_count + 1 }));
+        socketRef.current.send(JSON.stringify({ type: "message", message: content }));
+        setMessage("");
+        setIsSending(true);
+        setError(null);
+    };
+
+    const currentMessages = activeSession?.messages || [];
     const hour = new Date().getHours();
-    const greeting =
-        hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
     return (
-        <div
-            className="relative flex flex-col"
-            style={{
-                minHeight: "calc(100vh - 60px)",
-                background: "#0f172a",
-                fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-            }}
-        >
-            {/* Subtle radial glow in background */}
-            <div
-                style={{
-                    position: "absolute",
-                    top: "20%",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: 600,
-                    height: 400,
-                    borderRadius: "50%",
-                    background: "radial-gradient(ellipse, rgba(16,185,129,0.04) 0%, transparent 70%)",
-                    pointerEvents: "none",
-                }}
-            />
-
-            {/* Phone call FAB — top right */}
-            <button
-                style={{
-                    position: "absolute",
-                    top: 24,
-                    right: 24,
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #10b981, #059669)",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 4px 20px rgba(16,185,129,0.4)",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                    zIndex: 10,
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.08)";
-                    e.currentTarget.style.boxShadow = "0 6px 28px rgba(16,185,129,0.55)";
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.4)";
-                }}
-            >
-                <Phone className="w-5 h-5 text-white" />
-            </button>
-
-            {/* Center content area */}
-            <div
-                className="flex-1 flex flex-col items-center justify-center"
-                style={{ paddingBottom: 120, paddingTop: 48 }}
-            >
-                {/* Greeting */}
-                <h1
-                    style={{
-                        fontSize: 36,
-                        fontWeight: 800,
-                        color: "#ffffff",
-                        margin: "0 0 10px",
-                        letterSpacing: "-0.5px",
-                        textAlign: "center",
-                    }}
-                >
-                    {greeting}, Sarah
-                </h1>
-                <p
-                    style={{
-                        fontSize: 15,
-                        color: "#4ade80",
-                        margin: "0 0 36px",
-                        textAlign: "center",
-                        fontWeight: 500,
-                    }}
-                >
-                    How can we help you and your child today?
-                </p>
-
-                {/* Character selector pill */}
-                <div style={{ position: "relative" }}>
-                    <button
-                        onClick={() => setShowCharPicker((v) => !v)}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            borderRadius: 99,
-                            padding: "8px 16px 8px 8px",
-                            cursor: "pointer",
-                            transition: "background 0.2s, border-color 0.2s",
-                            backdropFilter: "blur(8px)",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-                            e.currentTarget.style.borderColor = "rgba(74,222,128,0.4)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
-                        }}
-                    >
-                        <span
-                            style={{
-                                fontSize: 13,
-                                color: "rgba(255,255,255,0.6)",
-                                fontWeight: 500,
-                                marginRight: 4,
-                            }}
-                        >
-                            Character in use :
-                        </span>
-                        {/* Avatar */}
-                        <div
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: "50%",
-                                background: selectedChar.color,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                color: "#fff",
-                                fontSize: 13,
-                                fontWeight: 700,
-                                flexShrink: 0,
-                            }}
-                        >
-                            {selectedChar.initials}
-                        </div>
-                        <ChevronDown
-                            className="w-4 h-4"
-                            style={{ color: "rgba(255,255,255,0.5)" }}
-                        />
-                    </button>
-
-                    {/* Character dropdown */}
-                    {showCharPicker && (
-                        <div
-                            style={{
-                                position: "absolute",
-                                top: "calc(100% + 8px)",
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                background: "#1a2535",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                borderRadius: 16,
-                                padding: "8px",
-                                minWidth: 180,
-                                boxShadow: "0 16px 48px rgba(0,0,0,0.4)",
-                                zIndex: 20,
-                            }}
-                        >
-                            {CHARACTERS.map((char) => (
-                                <button
-                                    key={char.id}
-                                    onClick={() => {
-                                        setSelectedChar(char);
-                                        setShowCharPicker(false);
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 10,
-                                        padding: "10px 12px",
-                                        borderRadius: 10,
-                                        border: "none",
-                                        background:
-                                            selectedChar.id === char.id
-                                                ? "rgba(16,185,129,0.12)"
-                                                : "transparent",
-                                        cursor: "pointer",
-                                        transition: "background 0.15s",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (selectedChar.id !== char.id)
-                                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (selectedChar.id !== char.id)
-                                            e.currentTarget.style.background = "transparent";
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            width: 30,
-                                            height: 30,
-                                            borderRadius: "50%",
-                                            background: char.color,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            color: "#fff",
-                                            fontSize: 12,
-                                            fontWeight: 700,
-                                        }}
-                                    >
-                                        {char.initials}
-                                    </div>
-                                    <span
-                                        style={{
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            color:
-                                                selectedChar.id === char.id ? "#4ade80" : "#c5d1de",
-                                        }}
-                                    >
-                                        {char.name}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Audio waveform FAB — bottom right above input */}
-            {/* <button
-                style={{
-                    position: "absolute",
-                    bottom: 88,
-                    right: 24,
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 4px 20px rgba(59,130,246,0.4)",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                    zIndex: 10,
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.08)";
-                    e.currentTarget.style.boxShadow = "0 6px 28px rgba(59,130,246,0.55)";
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(59,130,246,0.4)";
-                }}
-            >
-                <Waves className="w-5 h-5 text-white" />
-            </button> */}
-
-            {/* Bottom message input bar */}
-            <div
-                style={{
-                    position: "sticky",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: "16px 24px 20px",
-                    background:
-                        "linear-gradient(to top, #0d1826 60%, transparent)",
-                }}
-            >
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 99,
-                        padding: "8px 8px 8px 16px",
-                        backdropFilter: "blur(12px)",
-                        transition: "border-color 0.2s",
-                    }}
-                    onFocus={() => { }}
-                >
-                    {/* Attachment button */}
-                    <button
-                        style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: 6,
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "rgba(255,255,255,0.4)",
-                            transition: "color 0.15s, background 0.15s",
-                            flexShrink: 0,
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "rgba(255,255,255,0.8)";
-                            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.color = "rgba(255,255,255,0.4)";
-                            e.currentTarget.style.background = "none";
-                        }}
-                    >
-                        <Paperclip className="w-4 h-4" />
-                    </button>
-
-                    {/* Text input */}
-                    <input
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && message.trim()) setMessage("");
-                        }}
-                        placeholder={`Message ${selectedChar.name}...`}
-                        style={{
-                            flex: 1,
-                            background: "none",
-                            border: "none",
-                            outline: "none",
-                            fontSize: 14,
-                            color: "#c5d1de",
-                            caretColor: "#4ade80",
-                        }}
-                        className="placeholder:text-[rgba(255,255,255,0.3)]"
-                    />
-
-                    {/* Send button (teal) */}
-                    <button
-                        onClick={() => setMessage("")}
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: "50%",
-                            background:
-                                message.trim()
-                                    ? "linear-gradient(135deg, #10b981, #059669)"
-                                    : "rgba(255,255,255,0.08)",
-                            border: "none",
-                            cursor: message.trim() ? "pointer" : "default",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            transition: "background 0.2s, transform 0.15s",
-                            boxShadow: message.trim()
-                                ? "0 2px 12px rgba(16,185,129,0.35)"
-                                : "none",
-                        }}
-                    >
-                        <Send
-                            className="w-4 h-4"
-                            style={{
-                                color: message.trim()
-                                    ? "#fff"
-                                    : "rgba(255,255,255,0.3)",
-                                transform: "rotate(-5deg)",
-                            }}
-                        />
-                    </button>
-
-                    {/* Mic button */}
-                    <button
-                        onClick={() => setIsRecording((v) => !v)}
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: "50%",
-                            background: isRecording
-                                ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                                : "rgba(255,255,255,0.08)",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            transition: "background 0.2s",
-                            boxShadow: isRecording
-                                ? "0 2px 12px rgba(239,68,68,0.4)"
-                                : "none",
-                        }}
-                    >
-                        <Mic
-                            className="w-4 h-4"
-                            style={{
-                                color: isRecording ? "#fff" : "rgba(255,255,255,0.5)",
-                            }}
-                        />
-                    </button>
-                </div>
+        <div className="relative flex min-h-[calc(100vh-60px)] flex-col overflow-hidden bg-[#0f172a] text-white" style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
+            <div className="pointer-events-none absolute left-1/2 top-1/4 h-100 w-150 -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(16,185,129,0.05)_0%,transparent_70%)]" />
+            <div className="relative z-10 flex min-h-0 flex-1">
+                <aside className="hidden w-64 shrink-0 border-r border-[#1e2d3e] bg-[#111c2b]/80 p-4 md:flex md:flex-col">
+                    <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#4ade80]">Conversations</p><p className="mt-1 text-xs text-[#6b7a8d]">{sessions.length} session{sessions.length === 1 ? "" : "s"}</p></div><button onClick={() => void createSession()} disabled={isCreating || !token} title="New conversation" className="rounded-lg p-2 text-[#8b9ab0] transition hover:bg-[#1b4648] hover:text-white disabled:opacity-50">{isCreating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}</button></div>
+                    <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">{sessions.map((session) => <button key={session.id} onClick={() => connectToSession(session)} className={`w-full rounded-xl px-3 py-3 text-left transition ${activeSession?.id === session.id ? "bg-[#1b4648]" : "hover:bg-white/5"}`}><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 shrink-0 text-[#4ade80]" /><span className="truncate text-sm font-medium text-[#d8e2ec]">{session.title || "New conversation"}</span></div><p className="mt-1 pl-6 text-[11px] text-[#6b7a8d]">{session.message_count} message{session.message_count === 1 ? "" : "s"}</p></button>)}</div>
+                    <div className="mt-4 border-t border-[#1e2d3e] pt-3 text-xs text-[#6b7a8d]">Chatting as {user?.full_name || "parent"}</div>
+                </aside>
+                <section className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-center justify-between px-5 pt-5 md:px-8"><div className="flex items-center gap-2 text-xs text-[#8b9ab0]">{connection === "connected" ? <Wifi className="h-4 w-4 text-[#4ade80]" /> : connection === "connecting" ? <LoaderCircle className="h-4 w-4 animate-spin text-amber-400" /> : <WifiOff className="h-4 w-4 text-[#8b9ab0]" />}<span>{connection === "connected" ? "Connected" : connection === "connecting" ? "Connecting..." : "Disconnected"}</span></div><button title="Start a phone call" className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-900/30 transition hover:scale-105"><Phone className="h-4 w-4" /></button></div>
+                    <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-8 md:px-8">{isLoading ? <div className="flex h-full items-center justify-center text-[#8b9ab0]"><LoaderCircle className="mr-2 h-5 w-5 animate-spin" />Loading conversations...</div> : currentMessages.length === 0 ? <div className="flex h-full flex-col items-center justify-center pb-16 text-center"><h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{greeting}, {user?.full_name?.split(" ")[0] || "there"}</h1><p className="mt-2 text-sm text-[#4ade80]">How can we help you and your child today?</p></div> : <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">{currentMessages.map((item, index) => <div key={`${item.id || "local"}-${index}`} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${item.role === "user" ? "rounded-br-md bg-emerald-600 text-white" : "rounded-bl-md border border-[#2d3f55] bg-[#1a2535] text-[#d8e2ec]"}`}>{item.content}</div></div>)}{isTyping && <div className="flex items-center gap-2 text-xs text-[#8b9ab0]"><span className="h-2 w-2 animate-pulse rounded-full bg-[#4ade80]" />Thinking...</div>}<div ref={messagesEndRef} /></div>}</div>
+                    <div className="px-5 pb-5 pt-3 md:px-8">{error && <div className="mx-auto mb-3 flex max-w-3xl items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200"><span>{error}</span><button onClick={() => setError(null)} title="Dismiss error"><X className="h-4 w-4" /></button></div>}<form onSubmit={sendMessage} className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-white/10 bg-white/5 p-2 pl-3 backdrop-blur-xl focus-within:border-emerald-400/40"><button type="button" title="Attach a file" className="rounded-full p-2 text-white/40 transition hover:bg-white/10 hover:text-white/80"><Paperclip className="h-4 w-4" /></button><input value={message} onChange={(event) => setMessage(event.target.value)} disabled={!activeSession || connection !== "connected" || isSending} placeholder={activeSession ? "Message..." : "Select a conversation..."} className="min-w-0 flex-1 bg-transparent text-sm text-[#c5d1de] outline-none placeholder:text-white/30 disabled:cursor-not-allowed" /><button type="submit" disabled={!message.trim() || !activeSession || connection !== "connected" || isSending} title="Send message" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 transition hover:bg-emerald-500 disabled:cursor-default disabled:bg-white/10"><Send className="h-4 w-4" /></button><button type="button" onClick={() => setIsRecording((value) => !value)} title={isRecording ? "Stop recording" : "Start recording"} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${isRecording ? "bg-red-600" : "bg-white/10 hover:bg-white/20"}`}><Mic className="h-4 w-4" /></button></form></div>
+                </section>
             </div>
         </div>
     );
