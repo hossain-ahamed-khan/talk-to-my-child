@@ -24,14 +24,6 @@ const ChevronRight = () => (
     </svg>
 );
 
-const MicIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <rect x="7" y="1" width="8" height="13" rx="4" fill="white" />
-        <path d="M3 11c0 4.418 3.582 8 8 8s8-3.582 8-8" stroke="white" strokeWidth="2" strokeLinecap="round" />
-        <path d="M11 19v2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-);
-
 function getInitials(name: string) {
     return name
         .split(" ")
@@ -115,7 +107,9 @@ function CallCard({ call, index }: { call: ConversationSession; index: number })
 export default function CallHistory() {
     const { data, isLoading, isError } = useGetCallHistoryListQuery();
 
-    const calls = data?.data ?? [];
+    const calls = [...(data?.data ?? [])].sort(
+        (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+    );
 
     return (
         <>
@@ -127,14 +121,6 @@ export default function CallHistory() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes pulse-mic {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16,153,111,0.45); }
-          50% { box-shadow: 0 0 0 10px rgba(16,153,111,0); }
-        }
-
-        .mic-btn {
-          animation: pulse-mic 2.5s ease-in-out infinite;
-        }
       `}</style>
 
             <div className="history-page relative box-border min-h-screen w-full bg-[#0B1A24] px-2.5 py-5 font-['DM_Sans',sans-serif] sm:px-3.5 sm:py-6 md:px-5 md:py-8 lg:px-6 lg:py-10">
@@ -180,11 +166,6 @@ export default function CallHistory() {
                         ))}
                     </div>
                 )}
-
-                {/* Floating mic button */}
-                <button className="mic-btn fixed bottom-8 right-8 flex h-14 w-14 items-center justify-center rounded-full border-none bg-gradient-to-br from-[#10996f] to-[#0d7f5c] shadow-[0_4px_24px_rgba(16,153,111,0.35)] max-[768px]:bottom-3.5 max-[768px]:right-3.5 max-[768px]:h-[50px] max-[768px]:w-[50px]">
-                    <MicIcon />
-                </button>
             </div>
         </>
     );
