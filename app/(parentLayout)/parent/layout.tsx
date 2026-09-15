@@ -1,12 +1,13 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { Search, Bell } from "lucide-react";
+import { Search } from "lucide-react";
 import {
     SidebarInset,
     SidebarProvider,
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/parent/app-sidebar";
+import VoiceCallNotification from "@/components/parent/VoiceCallNotification";
 import RoleGuard from "@/components/auth/role-guard";
 
 export default function ParentLayout({ children }: { children: React.ReactNode }) {
@@ -63,16 +64,7 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
                         {/* Spacer */}
                         <div className="flex-1" />
 
-                        {/* Notification bell with badge */}
-                        <div className="relative">
-                            <button
-                                className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
-                                style={{ background: "#1a2535", color: "#c5d1de", border: "1px solid #2d3f55" }}
-                            >
-                                <Bell className="w-4 h-4" />
-                                <span className="text-[13px]">2</span>
-                            </button>
-                        </div>
+                        <VoiceCallNotification />
                     </header>
 
                     {/* Main content */}

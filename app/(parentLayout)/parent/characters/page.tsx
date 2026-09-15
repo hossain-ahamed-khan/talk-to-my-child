@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { selectToken } from "@/redux/features/auth/authSlice";
@@ -68,109 +69,59 @@ export default function Characters() {
                     <div>
                         <p style={styles.kicker}>Parent dashboard</p>
                         <h1 style={styles.title}>Characters</h1>
-                        <p style={styles.subtitle}>
-                            Manage the AI companions your child can talk to, all in one place.
-                        </p>
+                        <p style={styles.subtitle}>Manage the AI companions your child can talk to, all in one place.</p>
                     </div>
-
-                    <Button onClick={openCreateModal} style={styles.primaryButton}>
-                        Add New Character
-                    </Button>
+                    <Button onClick={openCreateModal} style={styles.primaryButton}>Add New Character</Button>
                 </div>
 
                 <div style={styles.summaryRow}>
-                    <div style={styles.summaryCard}>
-                        <span style={styles.summaryLabel}>Total characters</span>
-                        <strong style={styles.summaryValue}>{characters.length.toString().padStart(2, "0")}</strong>
-                    </div>
-                    <div style={styles.summaryCard}>
-                        <span style={styles.summaryLabel}>Loaded from API</span>
-                        <strong style={styles.summaryValue}>{fetchedCharacters.length.toString().padStart(2, "0")}</strong>
-                    </div>
-                    <div style={styles.summaryCard}>
-                        <span style={styles.summaryLabel}>Drafts added locally</span>
-                        <strong style={styles.summaryValue}>{localCharacters.length.toString().padStart(2, "0")}</strong>
-                    </div>
+                    <div style={styles.summaryCard}><span style={styles.summaryLabel}>Total characters</span><strong style={styles.summaryValue}>{characters.length.toString().padStart(2, "0")}</strong></div>
+                    <div style={styles.summaryCard}><span style={styles.summaryLabel}>Loaded from API</span><strong style={styles.summaryValue}>{fetchedCharacters.length.toString().padStart(2, "0")}</strong></div>
+                    <div style={styles.summaryCard}><span style={styles.summaryLabel}>Drafts added locally</span><strong style={styles.summaryValue}>{localCharacters.length.toString().padStart(2, "0")}</strong></div>
                 </div>
 
                 {!token ? (
-                    <div style={styles.stateCard}>
-                        <h2 style={styles.stateTitle}>Sign in to load characters</h2>
-                        <p style={styles.stateText}>
-                            The character list is tied to the authenticated parent account.
-                        </p>
-                    </div>
+                    <div style={styles.stateCard}><h2 style={styles.stateTitle}>Sign in to load characters</h2><p style={styles.stateText}>The character list is tied to the authenticated parent account.</p></div>
                 ) : isError ? (
-                    <div style={styles.stateCard}>
-                        <h2 style={styles.stateTitle}>Unable to load characters</h2>
-                        <p style={styles.stateText}>Check the API connection and try again.</p>
-                    </div>
+                    <div style={styles.stateCard}><h2 style={styles.stateTitle}>Unable to load characters</h2><p style={styles.stateText}>Check the API connection and try again.</p></div>
                 ) : isLoading ? (
-                    <div style={styles.grid}>
-                        {Array.from({ length: 4 }).map((_, index) => (
-                            <div key={index} style={styles.skeletonCard} />
-                        ))}
-                    </div>
+                    <div style={styles.grid}>{Array.from({ length: 4 }).map((_, index) => <div key={index} style={styles.skeletonCard} />)}</div>
                 ) : characters.length > 0 ? (
                     <div style={styles.grid}>
                         {characters.map((character) => (
-                            <article key={`${character.id}-${character.name}`} style={styles.card}>
-                                <div style={styles.cardTop}>
-                                    <div style={styles.avatarWrap}>
-                                        {character.profile_image ? (
-                                            <Image
-                                                src={resolveImageSrc(character.profile_image)}
-                                                alt={character.name}
-                                                width={180}
-                                                height={180}
-                                                style={styles.avatarImage}
-                                            />
-                                        ) : (
-                                            <span style={styles.avatarFallback}>{getInitials(character.name)}</span>
-                                        )}
-                                    </div>
-
-                                    <div style={styles.cardMeta}>
-                                        <h2 style={styles.cardTitle}>{character.name}</h2>
-                                        <p style={styles.cardSubtitle}>
-                                            {character.gender} · {character.age} years old
-                                        </p>
-                                        <div style={styles.tagRow}>
-                                            <span style={styles.tag}>{character.category}</span>
-                                            <span style={styles.tagSoft}>{character.role}</span>
+                            <Link
+                                key={`${character.id}-${character.name}`}
+                                href={`/parent/characters/${character.id}`}
+                                style={styles.cardLink}
+                                onClick={() => window.sessionStorage.setItem(`character:${character.id}`, JSON.stringify(character))}
+                            >
+                                <article style={styles.card}>
+                                    <div style={styles.cardTop}>
+                                        <div style={styles.avatarWrap}>
+                                            {character.profile_image ? <Image src={resolveImageSrc(character.profile_image)} alt={character.name} width={180} height={180} style={styles.avatarImage} /> : <span style={styles.avatarFallback}>{getInitials(character.name)}</span>}
+                                        </div>
+                                        <div style={styles.cardMeta}>
+                                            <h2 style={styles.cardTitle}>{character.name}</h2>
+                                            <p style={styles.cardSubtitle}>{character.gender} · {character.age} years old</p>
+                                            <div style={styles.tagRow}><span style={styles.tag}>{character.category}</span><span style={styles.tagSoft}>{character.role}</span></div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <p style={styles.cardDescription}>{character.description}</p>
-
-                                <div style={styles.cardFooter}>
-                                    <span style={styles.metaLine}>Created {formatDate(character.created_at)}</span>
-                                    <span style={styles.metaLine}>Updated {formatDate(character.updated_at)}</span>
-                                </div>
-                            </article>
+                                    <p style={styles.cardDescription}>{character.description}</p>
+                                    <div style={styles.cardFooter}><span style={styles.metaLine}>Created {formatDate(character.created_at)}</span><span style={styles.metaLine}>Updated {formatDate(character.updated_at)}</span></div>
+                                </article>
+                            </Link>
                         ))}
                     </div>
                 ) : (
                     <div style={styles.stateCard}>
                         <h2 style={styles.stateTitle}>No characters yet</h2>
-                        <p style={styles.stateText}>
-                            Create your first character to start building a companion profile.
-                        </p>
-                        <Button onClick={openCreateModal} style={styles.inlineButton}>
-                            Add New Character
-                        </Button>
+                        <p style={styles.stateText}>Create your first character to start building a companion profile.</p>
+                        <Button onClick={openCreateModal} style={styles.inlineButton}>Add New Character</Button>
                     </div>
                 )}
             </div>
 
-            <CharacterCreateModal
-                open={isCreateModalOpen}
-                form={form}
-                setForm={setForm}
-                onClose={closeCreateModal}
-                onCreate={handleCreateCharacter}
-            />
+            <CharacterCreateModal open={isCreateModalOpen} form={form} setForm={setForm} onClose={closeCreateModal} onCreate={handleCreateCharacter} />
         </div>
     );
 }
@@ -298,6 +249,12 @@ const styles: Record<string, React.CSSProperties> = {
         gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
         gap: "16px",
         alignItems: "stretch",
+    },
+    cardLink: {
+        display: "block",
+        color: "inherit",
+        textDecoration: "none",
+        height: "100%",
     },
     card: {
         border: "1px solid #1a3348",
