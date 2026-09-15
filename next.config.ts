@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "talkapi.dsrt321.online",
       },
+      {
+        protocol: "https",
+        hostname: "talkapi.sobhoy.com",
+      },
     ],
   },
 };
