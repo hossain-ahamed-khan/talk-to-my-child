@@ -2,7 +2,6 @@
 import * as React from "react";
 import {
     House,
-    Users,
     History,
     LogOut,
     Zap,
@@ -61,7 +60,6 @@ function NavItem({
 const data = {
     nav: [
         { title: "Home", url: "/child", icon: House },
-        { title: "Characters", url: "/child/characters", icon: Users },
         { title: "History", url: "/child/history", icon: History },
         { title: "Achievement", url: "/child/achievement", icon: Zap },
     ],

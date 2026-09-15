@@ -198,11 +198,13 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundColor: "#11b780",
         color: "#ffffff",
         boxShadow: "0 10px 24px rgba(17,183,128,0.18)",
+        cursor: "pointer",
     },
     inlineButton: {
         borderRadius: "999px",
         padding: "0 18px",
         marginTop: "10px",
+        cursor: "pointer",
     },
     summaryRow: {
         width: "100%",

@@ -81,12 +81,6 @@ const EditIcon = () => (
     </svg>
 );
 
-const MicIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-        <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm7 8a1 1 0 0 1 1 1 8 8 0 0 1-7 7.93V22h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.07A8 8 0 0 1 4 12a1 1 0 1 1 2 0 6 6 0 0 0 12 0 1 1 0 0 1 1-1z" />
-    </svg>
-);
-
 const ChildAvatar = ({ color }: { color: string }) => (
     <div style={{
         width: 36, height: 36, borderRadius: "50%",
@@ -179,15 +173,6 @@ export default function AccountSettings() {
 
     const remainingCredits = effectiveProfile?.credit_balance ?? 0;
     const referralCode = effectiveProfile?.referral_code ?? "---";
-    const isEmailVerified = effectiveProfile?.is_email_verified ?? false;
-    const lastLogin = effectiveProfile?.last_login
-        ? new Date(effectiveProfile.last_login).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-        })
-        : null;
-
     return (
         <div style={{
             background: "#091520",
@@ -374,49 +359,6 @@ export default function AccountSettings() {
                 {/* ── Account Settings heading + mic ── */}
                 <div className="section-header" style={{ marginBottom: 16 }}>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#e8f4f8" }}>Account Settings</h2>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        {effectiveProfile?.role && (
-                            <span style={{
-                                background: "rgba(14,165,233,0.12)",
-                                color: "#7dd3fc",
-                                border: "1px solid rgba(14,165,233,0.25)",
-                                borderRadius: 999,
-                                padding: "6px 10px",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                textTransform: "capitalize",
-                            }}>
-                                {effectiveProfile.role}
-                            </span>
-                        )}
-                        {isEmailVerified && (
-                            <span style={{
-                                background: "rgba(16,185,129,0.12)",
-                                color: "#10b981",
-                                border: "1px solid rgba(16,185,129,0.25)",
-                                borderRadius: 999,
-                                padding: "6px 10px",
-                                fontSize: 12,
-                                fontWeight: 700,
-                            }}>
-                                Email verified
-                            </span>
-                        )}
-                        {lastLogin && (
-                            <span style={{ fontSize: 12, color: "#8aaab8" }}>
-                                Last login {lastLogin}
-                            </span>
-                        )}
-                        <button style={{
-                            width: 48, height: 48, borderRadius: "50%",
-                            background: "linear-gradient(135deg, #10b981, #0ea5e9)",
-                            border: "none",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
-                        }}>
-                            <MicIcon />
-                        </button>
-                    </div>
                 </div>
 
                 {/* ── Bottom Row: Personal Info + Child Profiles ── */}

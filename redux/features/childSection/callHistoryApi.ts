@@ -22,6 +22,20 @@ export interface CallHistoryListResponse {
     errors: unknown | null;
 }
 
+export interface ConversationMessage {
+    role: "assistant" | "user";
+    content: string;
+    timestamp: string;
+}
+
+export interface ConversationDetailResponse {
+    success: boolean;
+    status_code: number;
+    message: string;
+    data: ConversationMessage[];
+    errors: unknown | null;
+}
+
 const callHistoryListApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         getCallHistoryList: builder.query<CallHistoryListResponse, void>({
@@ -30,7 +44,13 @@ const callHistoryListApi = baseApi.injectEndpoints({
                 method: 'GET',
             }),
         }),
+        getConversationDetails: builder.query<ConversationDetailResponse, number>({
+            query: (conversationId) => ({
+                url: `talk/conversations/${conversationId}/`,
+                method: 'GET',
+            }),
+        }),
     })
 })
 
-export const { useGetCallHistoryListQuery } = callHistoryListApi;
+export const { useGetCallHistoryListQuery, useGetConversationDetailsQuery } = callHistoryListApi;
