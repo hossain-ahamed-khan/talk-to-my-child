@@ -4,9 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type VoiceCallStatus = "idle" | "connecting" | "connected" | "closed" | "error";
 
+export type VoiceCallEvent = {
+    type?: string;
+    role?: "user" | "assistant";
+    text?: string;
+    content?: string;
+    message?: string;
+};
+
 interface UseVoiceCallOptions {
     wsUrl: string | null;
     onError?: (message: string) => void;
+    onEvent?: (event: VoiceCallEvent) => void;
 }
 
 interface UseVoiceCallReturn {
@@ -22,7 +31,7 @@ interface UseVoiceCallReturn {
 const SAMPLE_RATE = 16000;
 const PLAYBACK_LATENCY_OFFSET = 0.15; // absorbs network jitter, avoids choppy playback
 
-export function useVoiceCall({ wsUrl, onError }: UseVoiceCallOptions): UseVoiceCallReturn {
+export function useVoiceCall({ wsUrl, onError, onEvent }: UseVoiceCallOptions): UseVoiceCallReturn {
     const [status, setStatus] = useState<VoiceCallStatus>("idle");
     const [isRecording, setIsRecording] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -211,16 +220,15 @@ export function useVoiceCall({ wsUrl, onError }: UseVoiceCallOptions): UseVoiceC
     }, [onError]);
 
     useEffect(() => {
-        if (!wsUrl) return;
-
         // React Strict Mode (dev only) invokes this effect twice: mount -> cleanup -> mount.
         // On the first (throwaway) run, mark the guard and do nothing else —
         // crucially, do NOT return a cleanup function here, so the flag is never reset.
         // The second, real run will see the flag already set and proceed to connect.
         if (process.env.NODE_ENV === "development" && !effectRanRef.current) {
             effectRanRef.current = true;
-            return;
+            if (wsUrl) return;
         }
+        if (!wsUrl) return;
 
         setStatus("connecting");
         const socket = new WebSocket(wsUrl);
@@ -245,6 +253,14 @@ export function useVoiceCall({ wsUrl, onError }: UseVoiceCallOptions): UseVoiceC
         socket.onmessage = async (event) => {
             if (event.data instanceof Blob) {
                 await playReceivedAudio(event.data);
+                return;
+            }
+            try {
+                const payload = JSON.parse(event.data) as VoiceCallEvent;
+                onEvent?.(payload);
+                if (payload.type === "error") onError?.(payload.message || "The voice service returned an error.");
+            } catch {
+                onError?.("Received an unreadable response from the voice service.");
             }
         };
 
@@ -256,7 +272,7 @@ export function useVoiceCall({ wsUrl, onError }: UseVoiceCallOptions): UseVoiceC
             socketRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [wsUrl]);
+    }, [wsUrl, onError, onEvent, playReceivedAudio, stopRecording]);
 
     useEffect(() => {
         if (status === "connected" && !isRecording) {
