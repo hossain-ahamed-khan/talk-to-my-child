@@ -8,6 +8,16 @@ export type CreateCharacterResponse = {
     message: string;
 };
 
+export type UpdateCharacterRequest = {
+    id: number;
+    formData: FormData;
+};
+
+export type DeleteCharacterResponse = {
+    success: boolean;
+    message: string;
+};
+
 const createCharacterApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         createCharacter: builder.mutation<CreateCharacterResponse, FormData>({
@@ -17,7 +27,26 @@ const createCharacterApi = baseApi.injectEndpoints({
                 body: formData,
             }),
         }),
+        updateCharacter: builder.mutation<CreateCharacterResponse, UpdateCharacterRequest>({
+            query: ({ id, formData }) => ({
+                url: `characters/${id}/`,
+                method: "PATCH",
+                body: formData,
+            }),
+            invalidatesTags: ['Character'],
+        }),
+        deleteCharacter: builder.mutation<DeleteCharacterResponse, number>({
+            query: (id) => ({
+                url: `characters/${id}/`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ['Character'],
+        }),
     }),
 });
 
-export const { useCreateCharacterMutation } = createCharacterApi;
+export const {
+    useCreateCharacterMutation,
+    useUpdateCharacterMutation,
+    useDeleteCharacterMutation,
+} = createCharacterApi;

@@ -1,49 +1,19 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Swal from "sweetalert2";
 import { useAppSelector } from "@/redux/hooks";
-import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
-import { type ChildProfile, useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
+import { useGetProfileInfoQuery, useUpdateProfileMutation } from "@/redux/features/profile/profileInfo/profileInfoApi";
+import {
+    type ChildProfile,
+    useDeleteChildMutation,
+    useGetChildListApiQuery,
+} from "@/redux/features/profile/childList/childListApi";
 import { selectAuth } from "@/redux/features/auth/authSlice";
 import CreateChildModal from "@/components/parent/create-child-modal";
+import EditChildModal from "@/components/parent/edit-child-modal";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
-const ShareIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-        <polyline points="16 6 12 2 8 6" />
-        <line x1="12" y1="2" x2="12" y2="15" />
-    </svg>
-);
-
-const GiftIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 12 20 22 4 22 4 12" />
-        <rect x="2" y="7" width="20" height="5" />
-        <line x1="12" y1="22" x2="12" y2="7" />
-        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-    </svg>
-);
-
-const ChatIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8aaab8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-);
-
-const StarIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8aaab8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-);
-
-const ChevronRight = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3a5a70" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 18 15 12 9 6" />
-    </svg>
-);
-
 const PersonIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -78,6 +48,15 @@ const EditIcon = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4a7a90" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+);
+
+const DeleteIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 6h18" />
+        <path d="M8 6V4h8v2" />
+        <path d="M19 6l-1 15H6L5 6" />
+        <path d="M10 11v6M14 11v6" />
     </svg>
 );
 
@@ -128,18 +107,39 @@ const inputStyle: React.CSSProperties = {
     boxSizing: "border-box",
 };
 
+const getProfileImageUrl = (profilePhoto: string | null) => {
+    if (!profilePhoto) return null;
+    if (profilePhoto.startsWith("http://") || profilePhoto.startsWith("https://")) {
+        return profilePhoto.replace(/^http:\/\//, "https://");
+    }
+
+    const imageBaseUrl = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
+    return `${imageBaseUrl.replace(/\/$/, "")}/${profilePhoto.replace(/^\//, "")}`;
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function AccountSettings() {
     const auth = useAppSelector(selectAuth);
-    const { data: profile, isLoading, isError } = useGetProfileInfoQuery(undefined, {
+    const { data: profile, isError, refetch: refetchProfile } = useGetProfileInfoQuery(undefined, {
         skip: !auth.token,
     });
+    const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
+    const [deleteChild, { isLoading: isDeletingChild }] = useDeleteChildMutation();
     const { data: childProfiles = [], isLoading: isChildrenLoading, isError: isChildrenError } = useGetChildListApiQuery(undefined, {
         skip: !auth.token,
     });
     const [isCreateChildOpen, setIsCreateChildOpen] = useState(false);
+    const [childBeingEdited, setChildBeingEdited] = useState<ChildProfile | null>(null);
+    const [childActionError, setChildActionError] = useState<string | null>(null);
     const [localChildProfiles, setLocalChildProfiles] = useState<ChildProfile[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+    const [fullName, setFullName] = useState("");
+    const [isNameEdited, setIsNameEdited] = useState(false);
+    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [profileUpdateMessage, setProfileUpdateMessage] = useState<string | null>(null);
+    const [profileUpdateError, setProfileUpdateError] = useState<string | null>(null);
+    const photoInputRef = useRef<HTMLInputElement>(null);
 
     const effectiveProfile = profile ?? (auth.user ? {
         id: auth.user.id,
@@ -165,14 +165,88 @@ export default function AccountSettings() {
         setSelectedChildId(child.id);
     };
 
+    const handleDeleteChild = async (child: ChildProfile) => {
+        if (isDeletingChild) return;
+
+        const confirmation = await Swal.fire({
+            title: "Delete child profile?",
+            text: `${child.name}'s profile will be permanently deleted.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete it",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+        });
+
+        if (!confirmation.isConfirmed) return;
+
+        try {
+            setChildActionError(null);
+            await deleteChild(child.id).unwrap();
+            setLocalChildProfiles((current) => current.filter((item) => item.id !== child.id));
+            setSelectedChildId((current) => current === child.id ? null : current);
+            await Swal.fire({
+                title: "Deleted",
+                text: `${child.name}'s profile was deleted successfully.`,
+                icon: "success",
+                confirmButtonColor: "#11b780",
+                timer: 1600,
+                timerProgressBar: true,
+            });
+        } catch {
+            setChildActionError("Unable to delete this child right now.");
+            await Swal.fire({
+                title: "Delete failed",
+                text: "Unable to delete this child. Please try again.",
+                icon: "error",
+                confirmButtonColor: "#dc2626",
+            });
+        }
+    };
+
+    const handleChildUpdated = (child: ChildProfile) => {
+        setLocalChildProfiles((current) => current.map((item) => item.id === child.id ? child : item));
+        setSelectedChildId(child.id);
+    };
+
+    const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setProfileUpdateMessage(null);
+        setProfileUpdateError(null);
+
+        const formData = new FormData();
+        formData.append("full_name", (isNameEdited ? fullName : effectiveProfile?.full_name ?? "").trim());
+        if (selectedPhoto) formData.append("profile_photo", selectedPhoto);
+
+        try {
+            const response = await updateProfile(formData).unwrap();
+            await refetchProfile();
+            setProfileUpdateMessage(response.message);
+            setFullName(response.data.full_name);
+            setIsNameEdited(false);
+            setPhotoPreview(getProfileImageUrl(response.data.profile_photo));
+            setSelectedPhoto(null);
+        } catch {
+            setProfileUpdateError("Unable to update your profile right now.");
+        }
+    };
+
+    const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] ?? null;
+        setSelectedPhoto(file);
+        setPhotoPreview(file ? URL.createObjectURL(file) : getProfileImageUrl(effectiveProfile?.profile_photo ?? null));
+    };
+
+    const displayedFullName = isNameEdited ? fullName : effectiveProfile?.full_name ?? fullName;
+    const profileImageUrl = photoPreview ?? getProfileImageUrl(effectiveProfile?.profile_photo ?? null);
+
     const plans = [
         { name: "Bronze", desc: "Standard features", price: "£1.99/mo", accent: "#cd7f32", badge: null },
         { name: "Silver", desc: "Add and manage 3 child accounts", price: "£15/mo", accent: "#9badb7", badge: "BEST VALUE" },
         { name: "Gold", desc: "Add and manage 10 child accounts", price: "£50/mo", accent: "#d4af37", badge: null },
     ];
 
-    const remainingCredits = effectiveProfile?.credit_balance ?? 0;
-    const referralCode = effectiveProfile?.referral_code ?? "---";
     return (
         <div style={{
             background: "#091520",
@@ -190,6 +264,8 @@ export default function AccountSettings() {
 
         .account-container {
             width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .responsive-two-col {
@@ -245,41 +321,8 @@ export default function AccountSettings() {
                     </div>
                 )}
 
-                {/* ── Row 1: Credit Status + Referral Goal ── */}
-                <div className="responsive-two-col" style={{ marginBottom: 16 }}>
-
-                    {/* Credit Status */}
-                    <div style={card}>
-                        <p style={{ ...label, marginBottom: 20 }}>CREDIT STATUS</p>
-                        <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
-                            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#e8f4f8" }}>
-                                {isLoading && auth.token ? "Loading credits..." : `${remainingCredits} Remaining Credits`}
-                            </h2>
-                            <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                <span style={{ color: "#10b981", fontSize: 13, fontWeight: 500 }}>Share your referral code to earn more credits</span>
-                                <ShareIcon />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Referral Goal */}
-                    <div style={card}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                            <p style={{ ...label, marginBottom: 0 }}>REFERRAL CODE</p>
-                            <GiftIcon />
-                        </div>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 26, fontWeight: 700 }}>{referralCode}</span>
-                            <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600 }}>Active referral code</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: 13, color: "#8aaab8", lineHeight: 1.5 }}>
-                            Share this code so friends can join and you can grow your credit balance.
-                        </p>
-                    </div>
-                </div>
-
                 {/* ── Subscription Plans ── */}
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 16, order: 4 }}>
                     <p style={{ ...label, marginBottom: 12 }}>SUBSCRIPTION PLANS</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         {plans.map((plan) => (
@@ -357,15 +400,15 @@ export default function AccountSettings() {
                 </div> */}
 
                 {/* ── Account Settings heading + mic ── */}
-                <div className="section-header" style={{ marginBottom: 16 }}>
+                <div className="section-header" style={{ marginBottom: 16, order: 1 }}>
                     <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#e8f4f8" }}>Account Settings</h2>
                 </div>
 
                 {/* ── Bottom Row: Personal Info + Child Profiles ── */}
-                <div className="responsive-two-col">
+                <div className="responsive-two-col" style={{ order: 2, marginBottom: 16 }}>
 
                     {/* Personal Information */}
-                    <div style={card}>
+                    <form style={card} onSubmit={handleProfileSubmit}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                             <PersonIcon />
                             <span style={{ fontWeight: 700, fontSize: 14 }}>Personal Information</span>
@@ -373,7 +416,16 @@ export default function AccountSettings() {
 
                         <div style={{ marginBottom: 16 }}>
                             <label style={label}>FULL NAME</label>
-                            <input key={effectiveProfile?.id ?? "full-name"} style={inputStyle} defaultValue={effectiveProfile?.full_name ?? ""} readOnly />
+                            <input
+                                key={effectiveProfile?.id ?? "full-name"}
+                                style={inputStyle}
+                                value={displayedFullName}
+                                onChange={(event) => {
+                                    setFullName(event.target.value);
+                                    setIsNameEdited(true);
+                                }}
+                                required
+                            />
                         </div>
 
                         <div style={{ marginBottom: 20 }}>
@@ -385,12 +437,13 @@ export default function AccountSettings() {
                             <label style={label}>PROFILE PICTURE</label>
                             <div style={{ display: "flex", justifyContent: "center", paddingTop: 10 }}>
                                 <div style={{ position: "relative" }}>
-                                    {effectiveProfile?.profile_photo ? (
+                                    {profileImageUrl ? (
                                         <Image
-                                            src={effectiveProfile.profile_photo}
-                                            alt={effectiveProfile.full_name}
+                                            src={profileImageUrl}
+                                            alt={displayedFullName || "Profile picture"}
                                             width={80}
                                             height={80}
+                                            unoptimized
                                             style={{
                                                 borderRadius: "50%",
                                                 objectFit: "cover",
@@ -407,20 +460,44 @@ export default function AccountSettings() {
                                             <CameraIcon />
                                         </div>
                                     )}
-                                    <div style={{
-                                        position: "absolute", bottom: 0, right: 0,
-                                        width: 22, height: 22, borderRadius: "50%",
-                                        background: "#10b981",
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        border: "2px solid #091520",
-                                    }}>
+                                    <button
+                                        type="button"
+                                        aria-label="Choose a profile picture"
+                                        onClick={() => photoInputRef.current?.click()}
+                                        style={{
+                                            position: "absolute", bottom: 0, right: 0,
+                                            width: 22, height: 22, borderRadius: "50%",
+                                            background: "#10b981",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            border: "2px solid #091520",
+                                            padding: 0,
+                                        }}>
                                         <PlusIcon />
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
+                            <input
+                                ref={photoInputRef}
+                                id="profile-photo"
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoChange}
+                                style={{ display: "none" }}
+                            />
                         </div>
 
-                        <button style={{
+                        {profileUpdateMessage && (
+                            <div style={{ color: "#10b981", fontSize: 13, marginBottom: 12 }} role="status">
+                                {profileUpdateMessage}
+                            </div>
+                        )}
+                        {profileUpdateError && (
+                            <div style={{ color: "#fecaca", fontSize: 13, marginBottom: 12 }} role="alert">
+                                {profileUpdateError}
+                            </div>
+                        )}
+
+                        <button type="submit" disabled={isUpdatingProfile} style={{
                             background: "#10b981",
                             color: "#091520",
                             border: "none",
@@ -430,9 +507,9 @@ export default function AccountSettings() {
                             fontSize: 14,
                             fontFamily: "'DM Sans', sans-serif",
                         }}>
-                            Save Changes
+                            {isUpdatingProfile ? "Saving..." : "Save Changes"}
                         </button>
-                    </div>
+                    </form>
 
                     {/* Child Profiles */}
                     <div style={card}>
@@ -516,15 +593,20 @@ export default function AccountSettings() {
                             </div>
                         )}
 
+                        {childActionError && (
+                            <div role="alert" style={{ color: "#fecaca", fontSize: 12, marginBottom: 12 }}>
+                                {childActionError}
+                            </div>
+                        )}
+
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {isChildrenLoading && auth.token ? (
                                 <div style={{ fontSize: 13, color: "#8aaab8" }}>Loading child profiles...</div>
                             ) : mergedChildProfiles.length > 0 ? mergedChildProfiles.map((child, index) => {
                                 const isSelected = child.id === selectedChildId;
                                 return (
-                                    <button
+                                    <div
                                         key={child.id}
-                                        type="button"
                                         onClick={() => setSelectedChildId(child.id)}
                                         style={{
                                             background: "#091520",
@@ -536,6 +618,7 @@ export default function AccountSettings() {
                                             justifyContent: "space-between",
                                             width: "100%",
                                             textAlign: "left",
+                                            cursor: "pointer",
                                         }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                                             <ChildAvatar color={getChildColor(index)} />
@@ -550,11 +633,31 @@ export default function AccountSettings() {
                                                     Selected
                                                 </span>
                                             )}
-                                            <span style={{ background: "none", border: "none", padding: 4, display: "flex" }}>
+                                            <button
+                                                type="button"
+                                                aria-label={`Edit ${child.name}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setChildBeingEdited(child);
+                                                }}
+                                                style={{ background: "none", border: "none", padding: 4, display: "flex" }}
+                                            >
                                                 <EditIcon />
-                                            </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                aria-label={`Delete ${child.name}`}
+                                                disabled={isDeletingChild}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void handleDeleteChild(child);
+                                                }}
+                                                style={{ background: "none", border: "none", padding: 4, display: "flex" }}
+                                            >
+                                                <DeleteIcon />
+                                            </button>
                                         </div>
-                                    </button>
+                                    </div>
                                 );
                             }) : (
                                 <div style={{ fontSize: 13, color: "#8aaab8" }}>No child profiles found.</div>
@@ -567,6 +670,13 @@ export default function AccountSettings() {
                     open={isCreateChildOpen}
                     onClose={() => setIsCreateChildOpen(false)}
                     onCreate={handleCreateChild}
+                />
+
+                <EditChildModal
+                    key={childBeingEdited?.id ?? "edit-child"}
+                    child={childBeingEdited}
+                    onClose={() => setChildBeingEdited(null)}
+                    onUpdated={handleChildUpdated}
                 />
 
             </div>

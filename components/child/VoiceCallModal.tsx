@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/useVoiceCall";
@@ -13,9 +13,13 @@ interface VoiceCallModalProps {
 }
 
 export default function VoiceCallModal({ wsUrl, characterName, characterAvatar, onClose }: VoiceCallModalProps) {
+    const handleVoiceError = useCallback((message: string) => {
+        toast.error(message);
+    }, []);
+
     const { status, isMuted, toggleMute, stopRecording, disconnect } = useVoiceCall({
         wsUrl,
-        onError: (message) => toast.error(message),
+        onError: handleVoiceError,
     });
 
     useEffect(() => {

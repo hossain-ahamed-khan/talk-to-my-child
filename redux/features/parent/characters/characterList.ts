@@ -31,6 +31,7 @@ const characterListApi = baseApi.injectEndpoints({
                 method: 'GET',
             }),
             transformResponse: (response: CharacterListResponse) => response.data,
+            providesTags: ['Character'],
         }),
     })
 })

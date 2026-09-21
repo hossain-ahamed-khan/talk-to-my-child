@@ -8,12 +8,12 @@ export type ProfileInfo = {
     role: string;
     is_email_verified: boolean;
     credit_balance: number;
-    referral_code: string;
+    referral_code: string | null;
     date_joined: string;
     last_login: string;
 };
 
-export type ProfileInfoResponse = {
+export type UpdateProfileResponse = {
     success: boolean;
     status_code: number;
     message: string;
@@ -28,9 +28,17 @@ const profileInfoApi = baseApi.injectEndpoints({
                 url: 'auth/profile/',
                 method: 'GET',
             }),
-            transformResponse: (response: ProfileInfoResponse) => response.data,
+            providesTags: ['Profile'],
+        }),
+        updateProfile: builder.mutation<UpdateProfileResponse, FormData>({
+            query: (formData) => ({
+                url: 'auth/profile/',
+                method: 'PATCH',
+                body: formData,
+            }),
+            invalidatesTags: ['Profile'],
         }),
     })
 })
 
-export const { useGetProfileInfoQuery } = profileInfoApi;
+export const { useGetProfileInfoQuery, useUpdateProfileMutation } = profileInfoApi;

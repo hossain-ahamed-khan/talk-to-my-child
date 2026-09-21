@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, CSSProperties, Dispatch, SetStateAction } from "react";
 import Image from "next/image";
 
-import { useCreateCharacterMutation } from "@/redux/features/parent/characters/createCharacters";
+import {
+    useCreateCharacterMutation,
+    useUpdateCharacterMutation,
+} from "@/redux/features/parent/characters/createCharacters";
 import type { CharacterProfile } from "@/redux/features/parent/characters/characterList";
 
 export type CharacterFormState = {
@@ -35,6 +38,8 @@ type CharacterCreateModalProps = {
     setForm: Dispatch<SetStateAction<CharacterFormState>>;
     onClose: () => void;
     onCreate: (character: CharacterProfile) => void;
+    mode?: "create" | "edit";
+    characterId?: number;
 };
 
 const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
@@ -45,7 +50,7 @@ function resolveImageSrc(value: string | null) {
     return `${IMAGE_BASE_URL}${value}`;
 }
 
-const genderOptions = ["Female", "Male", "Neutral"];
+const genderOptions = ["Female", "Male", "Men", "Neutral"];
 
 const voiceSourceMethods = [
     {
@@ -63,7 +68,15 @@ const voiceSourceMethods = [
 type VoiceMethod = (typeof voiceSourceMethods)[number]["key"];
 type RecordingState = "idle" | "recording" | "processing";
 
-export default function CharacterCreateModal({ open, form, setForm, onClose, onCreate }: CharacterCreateModalProps) {
+export default function CharacterCreateModal({
+    open,
+    form,
+    setForm,
+    onClose,
+    onCreate,
+    mode = "create",
+    characterId,
+}: CharacterCreateModalProps) {
     const imageInputRef = useRef<HTMLInputElement>(null);
     const voiceInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -72,6 +85,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
     const isOpenRef = useRef(open);
 
     const [createCharacter, { isLoading }] = useCreateCharacterMutation();
+    const [updateCharacter, { isLoading: isUpdating }] = useUpdateCharacterMutation();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
     const [voiceMethod, setVoiceMethod] = useState<VoiceMethod | null>(null);
@@ -160,11 +174,14 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
         setSubmitError(null);
 
         try {
-            const response = await createCharacter(buildCharacterFormData(form)).unwrap();
+            const formData = buildCharacterFormData(form);
+            const response = mode === "edit" && characterId !== undefined
+                ? await updateCharacter({ id: characterId, formData }).unwrap()
+                : await createCharacter(formData).unwrap();
             onCreate(response.data);
             onClose();
         } catch (error) {
-            setSubmitError(getErrorMessage(error, "Unable to create character. Please try again."));
+            setSubmitError(getErrorMessage(error, `Unable to ${mode === "edit" ? "update" : "create"} character. Please try again.`));
         }
     };
 
@@ -261,15 +278,16 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
                 ? "Recorded voice"
                 : null;
 
-    const createDisabled = !form.name.trim() || isLoading || recordingState !== "idle";
+    const isSubmitting = isLoading || isUpdating;
+    const createDisabled = !form.name.trim() || isSubmitting || recordingState !== "idle";
 
     return (
         <div style={styles.overlay} onClick={onClose}>
             <div style={styles.modal} onClick={(event) => event.stopPropagation()}>
                 <div style={styles.header}>
                     <div>
-                        <h2 style={styles.title}>Add New Character</h2>
-                        <p style={styles.subtitle}>Create a unique profile and voice for your child&apos;s character.</p>
+                        <h2 style={styles.title}>{mode === "edit" ? "Edit Character" : "Add New Character"}</h2>
+                        <p style={styles.subtitle}>{mode === "edit" ? "Update this character's profile and voice." : "Create a unique profile and voice for your child's character."}</p>
                     </div>
 
                     <button type="button" style={styles.closeButton} onClick={onClose} aria-label="Close modal">
@@ -364,7 +382,7 @@ export default function CharacterCreateModal({ open, form, setForm, onClose, onC
 
                         <div style={styles.actions}>
                             <button type="button" onClick={handleCreate} disabled={createDisabled} style={styles.primaryAction}>
-                                {isLoading ? "Creating..." : "Create Character"}
+                                {isSubmitting ? (mode === "edit" ? "Saving..." : "Creating...") : mode === "edit" ? "Save Changes" : "Create Character"}
                             </button>
                             <button type="button" onClick={onClose} style={styles.secondaryAction}>
                                 Cancel

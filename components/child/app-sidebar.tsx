@@ -23,8 +23,24 @@ import Link from "next/link";
 import Image from "next/image";
 import mainLogo from "@/public/images/main-logo.png";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { logout, selectUser } from "@/redux/features/auth/authSlice";
+import { logout, selectAuth, selectUser } from "@/redux/features/auth/authSlice";
+import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
 import Swal from "sweetalert2";
+
+const getProfileImageUrl = (profilePhoto: string | null) => {
+    if (!profilePhoto) return null;
+    if (profilePhoto.startsWith("http://") || profilePhoto.startsWith("https://")) return profilePhoto;
+
+    const imageBaseUrl = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
+    return `${imageBaseUrl.replace(/\/$/, "")}/${profilePhoto.replace(/^\//, "")}`;
+};
+
+const getUserInitials = (name: string | undefined) => {
+    const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+    if (words.length === 0) return "S";
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+};
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -67,11 +83,16 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const user = useAppSelector(selectUser);
+    const auth = useAppSelector(selectAuth);
+    const { data: profile } = useGetProfileInfoQuery(undefined, {
+        skip: !auth.token,
+    });
     const pathname = usePathname();
     const router = useRouter();
     const dispatch = useAppDispatch();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
+    const profileImageUrl = getProfileImageUrl(profile?.profile_photo ?? null);
 
     const handleLogout = () => {
         Swal.fire({
@@ -91,7 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         });
     };
 
-    const userInitial = user?.full_name?.trim()?.charAt(0).toUpperCase() ?? "S";
+    const userInitials = getUserInitials(profile?.full_name ?? user?.full_name);
 
     return (
         <Sidebar
@@ -134,47 +155,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             {/* Footer: Current Balance + User Profile */}
             <SidebarFooter className="px-3 pb-4 space-y-3">
-                {!isCollapsed && (
-                    /* Current Balance card */
-                    <div className="rounded-2xl p-3.5" style={{ background: "#1a2535" }}>
-                        <div className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-                            style={{ color: "#4ade80" }}>
-                            Current Balance
-                        </div>
-                        <div className="flex items-end justify-between mb-2">
-                            <span className="text-white font-bold text-2xl">{user?.credit_balance ?? 0}</span>
-                            <span className="text-[#8b9ab0] text-[11px]">AI Credits</span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="h-1.5 rounded-full mb-1.5" style={{ background: "#2d3f55" }}>
-                            <div className="h-full rounded-full" style={{ width: "62%", background: "linear-gradient(90deg, #10b981, #4ade80)" }} />
-                        </div>
-                        <div className="text-[10px]" style={{ color: "#6b7a8d" }}>Resets on Nov 24, 2023</div>
-                    </div>
-                )}
-
                 {/* User profile row */}
                 <div className={`flex items-center rounded-xl p-2 transition-colors hover:bg-white/5 cursor-pointer ${isCollapsed ? "justify-center" : "justify-between"}`}>
                     <div className="flex items-center gap-2.5">
                         {/* Avatar */}
                         <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden"
                             style={{ background: "linear-gradient(135deg, #f97316, #ec4899)" }}>
-                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{userInitial}</div>
+                            {profileImageUrl ? (
+                                <Image
+                                    src={profileImageUrl}
+                                    alt={profile?.full_name ?? user?.full_name ?? "Profile picture"}
+                                    width={36}
+                                    height={36}
+                                    unoptimized
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                                    {userInitials}
+                                </div>
+                            )}
                         </div>
                         {!isCollapsed && (
                             <div>
-                                <div className="text-white font-semibold text-[13px]">{user?.full_name ?? "Guest"}</div>
-                                <div className="text-[#4ade80] text-[11px]">Referral Code: {user?.referral_code ?? "-"}</div>
+                                <div className="text-white font-semibold text-[13px]">{user?.full_name}</div>
                             </div>
                         )}
                     </div>
                     {!isCollapsed && (
                         <button
-                            type="button"
                             onClick={handleLogout}
-                            className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                            className="flex items-center gap-1 text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
                             title="Logout"
                         >
+                            Logout
                             <LogOut className="w-4 h-4" />
                         </button>
                     )}

@@ -1,15 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { useParams } from "next/navigation";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
+import CharacterCreateModal, {
+    defaultCharacterForm,
+    type CharacterFormState,
+} from "@/components/parent/character-create-modal";
 import { selectToken } from "@/redux/features/auth/authSlice";
 import {
     type CharacterProfile,
     useGetCharacterListApiQuery,
 } from "@/redux/features/parent/characters/characterList";
+import { useDeleteCharacterMutation } from "@/redux/features/parent/characters/createCharacters";
 import { useAppSelector } from "@/redux/hooks";
 
 const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
@@ -55,12 +62,77 @@ function getStoredCharacter(id: string) {
 
 export default function CharacterDetailsPage() {
     const { id } = useParams<{ id: string }>();
+    const router = useRouter();
     const token = useAppSelector(selectToken);
     const { data: characters = [], isLoading, isError } = useGetCharacterListApiQuery(undefined, {
         skip: !token,
     });
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [form, setForm] = useState<CharacterFormState>(defaultCharacterForm);
+    const [localCharacter, setLocalCharacter] = useState<CharacterProfile | null>(null);
+    const [deleteCharacter, { isLoading: isDeleting }] = useDeleteCharacterMutation();
 
-    const character = characters.find((item) => item.id === Number(id)) ?? getStoredCharacter(id);
+    const character = localCharacter ?? characters.find((item) => item.id === Number(id)) ?? getStoredCharacter(id);
+
+    const openEditModal = () => {
+        if (!character) return;
+
+        setForm({
+            name: character.name,
+            gender: character.gender,
+            category: character.category,
+            role: character.role,
+            age: String(character.age),
+            description: character.description,
+            profile_image: character.profile_image,
+            voice_sample: character.voice_sample,
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdatedCharacter = (updatedCharacter: CharacterProfile) => {
+        setLocalCharacter(updatedCharacter);
+        window.sessionStorage.setItem(`character:${updatedCharacter.id}`, JSON.stringify(updatedCharacter));
+        setIsEditModalOpen(false);
+    };
+
+    const handleDelete = async () => {
+        if (!character || isDeleting) return;
+
+        const confirmation = await Swal.fire({
+            title: "Delete character?",
+            text: `${character.name} will be permanently deleted.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete it",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+        });
+
+        if (!confirmation.isConfirmed) return;
+
+        try {
+            await deleteCharacter(character.id).unwrap();
+            window.sessionStorage.removeItem(`character:${character.id}`);
+            await Swal.fire({
+                title: "Deleted",
+                text: `${character.name} was deleted successfully.`,
+                icon: "success",
+                confirmButtonColor: "#11b780",
+                timer: 1600,
+                timerProgressBar: true,
+            });
+            router.push("/parent/characters");
+        } catch {
+            await Swal.fire({
+                title: "Delete failed",
+                text: "Unable to delete this character. Please try again.",
+                icon: "error",
+                confirmButtonColor: "#dc2626",
+            });
+        }
+    };
 
     return (
         <div style={styles.pageShell}>
@@ -79,14 +151,35 @@ export default function CharacterDetailsPage() {
                 ) : !character ? (
                     <StateMessage title="Character not found" text="This character may have been removed or the link may be invalid." />
                 ) : (
-                    <CharacterDetails character={character} />
+                    <>
+                        <CharacterDetails character={character} onEdit={openEditModal} onDelete={handleDelete} isDeleting={isDeleting} />
+                        <CharacterCreateModal
+                            open={isEditModalOpen}
+                            form={form}
+                            setForm={setForm}
+                            onClose={() => setIsEditModalOpen(false)}
+                            onCreate={handleUpdatedCharacter}
+                            mode="edit"
+                            characterId={character.id}
+                        />
+                    </>
                 )}
             </main>
         </div>
     );
 }
 
-function CharacterDetails({ character }: { character: CharacterProfile }) {
+function CharacterDetails({
+    character,
+    onEdit,
+    onDelete,
+    isDeleting,
+}: {
+    character: CharacterProfile;
+    onEdit: () => void;
+    onDelete: () => void;
+    isDeleting: boolean;
+}) {
     return (
         <article style={styles.detailsCard}>
             <div style={styles.heroRow}>
@@ -112,6 +205,16 @@ function CharacterDetails({ character }: { character: CharacterProfile }) {
                     <div style={styles.tagRow}>
                         <span style={styles.tag}>{character.category}</span>
                         <span style={styles.tagSoft}>{character.role}</span>
+                    </div>
+                    <div style={styles.actionRow}>
+                        <button type="button" style={styles.editButton} onClick={onEdit}>
+                            <Pencil size={15} />
+                            Edit character
+                        </button>
+                        <button type="button" style={styles.deleteButton} onClick={onDelete} disabled={isDeleting}>
+                            <Trash2 size={15} />
+                            {isDeleting ? "Deleting..." : "Delete character"}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -151,7 +254,7 @@ function StateMessage({ title, text }: { title: string; text: string }) {
 
 const styles: Record<string, React.CSSProperties> = {
     pageShell: { minHeight: "100vh", padding: "clamp(16px, 2.5vw, 28px)", background: "#091520", boxSizing: "border-box" },
-    pageFrame: { width: "100%", maxWidth: "980px", margin: "0 auto", color: "#e8f4f8", fontFamily: "var(--font-sans)" },
+    pageFrame: { width: "100%", margin: "0 auto", color: "#e8f4f8", fontFamily: "var(--font-sans)" },
     backLink: { display: "inline-flex", alignItems: "center", gap: "8px", color: "#8aaab8", textDecoration: "none", fontSize: "14px", marginBottom: "22px" },
     detailsCard: { border: "1px solid #1a3348", borderRadius: "22px", background: "#0d1e2d", padding: "clamp(20px, 4vw, 38px)" },
     heroRow: { display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" },
@@ -164,6 +267,9 @@ const styles: Record<string, React.CSSProperties> = {
     tagRow: { display: "flex", flexWrap: "wrap", gap: "8px" },
     tag: { backgroundColor: "rgba(17,183,128,0.14)", color: "#7df0c3", borderRadius: "999px", padding: "6px 10px", fontSize: "12px", fontWeight: 600 },
     tagSoft: { backgroundColor: "rgba(74,122,144,0.12)", color: "#8aaab8", borderRadius: "999px", padding: "6px 10px", fontSize: "12px", fontWeight: 500 },
+    actionRow: { display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "18px" },
+    editButton: { display: "inline-flex", alignItems: "center", gap: "7px", border: "0", borderRadius: "999px", background: "#11b780", color: "#fff", padding: "10px 14px", fontSize: "13px", fontWeight: 700, cursor: "pointer" },
+    deleteButton: { display: "inline-flex", alignItems: "center", gap: "7px", border: "1px solid rgba(248,113,113,0.35)", borderRadius: "999px", background: "transparent", color: "#fca5a5", padding: "10px 14px", fontSize: "13px", fontWeight: 700, cursor: "pointer" },
     descriptionSection: { borderTop: "1px solid #1a3348", marginTop: "32px", paddingTop: "26px" },
     sectionTitle: { color: "#e8f4f8", fontSize: "20px", margin: "0 0 10px" },
     description: { color: "#c8dde8", lineHeight: 1.7, margin: 0 },

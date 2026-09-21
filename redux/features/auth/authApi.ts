@@ -13,6 +13,7 @@ export type TLoginResponse = {
     message: string;
     data: {
         access_token: string;
+        refresh_token: string;
         token_type: string;
         role: string;
         user_data: TUser;

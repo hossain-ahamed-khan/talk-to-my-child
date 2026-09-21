@@ -158,7 +158,6 @@ const styles: Record<string, React.CSSProperties> = {
     },
     pageFrame: {
         width: "100%",
-        maxWidth: "1320px",
         margin: "0 auto",
         color: "#e8f4f8",
         fontFamily: "var(--font-sans)",

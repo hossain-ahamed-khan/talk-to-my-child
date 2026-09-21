@@ -25,7 +25,17 @@ import mainLogo from "@/public/images/main-logo.png";
 import Image from "next/image";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import { selectUser, logout } from "@/redux/features/auth/authSlice";
+import { useGetProfileInfoQuery } from "@/redux/features/profile/profileInfo/profileInfoApi";
+import { selectAuth } from "@/redux/features/auth/authSlice";
 import Swal from "sweetalert2";
+
+const getProfileImageUrl = (profilePhoto: string | null) => {
+    if (!profilePhoto) return null;
+    if (profilePhoto.startsWith("http://") || profilePhoto.startsWith("https://")) return profilePhoto;
+
+    const imageBaseUrl = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
+    return `${imageBaseUrl.replace(/\/$/, "")}/${profilePhoto.replace(/^\//, "")}`;
+};
 
 // Nav item matching TalkToMyChild sidebar style
 function NavItem({
@@ -69,11 +79,16 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const user = useAppSelector(selectUser);
+    const auth = useAppSelector(selectAuth);
+    const { data: profile } = useGetProfileInfoQuery(undefined, {
+        skip: !auth.token,
+    });
     const pathname = usePathname();
     const router = useRouter();
     const dispatch = useAppDispatch();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
+    const profileImageUrl = getProfileImageUrl(profile?.profile_photo ?? null);
 
     const handleLogout = () => {
         Swal.fire({
@@ -137,19 +152,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {!isCollapsed && (
                     /* Current Balance card */
                     <div className="rounded-2xl p-3.5" style={{ background: "#1a2535" }}>
-                        <div className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-                            style={{ color: "#4ade80" }}>
-                            Current Balance
+                        <div className="mb-2">
+                            <span className="text-[#4ade80] text-md">Credit Balance: {user?.credit_balance}</span>
+                            <div className="text-[#4ade80] text-md">Referral Code: {user?.referral_code}</div>
                         </div>
-                        <div className="flex items-end justify-between mb-2">
-                            <span className="text-white font-bold text-2xl">{user?.credit_balance}</span>
-                            <span className="text-[#8b9ab0] text-[11px]">AI Credits</span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="h-1.5 rounded-full mb-1.5" style={{ background: "#2d3f55" }}>
-                            <div className="h-full rounded-full" style={{ width: "62%", background: "linear-gradient(90deg, #10b981, #4ade80)" }} />
-                        </div>
-                        <div className="text-[10px]" style={{ color: "#6b7a8d" }}>Resets on Nov 24, 2023</div>
                     </div>
                 )}
 
@@ -159,21 +165,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         {/* Avatar */}
                         <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden"
                             style={{ background: "linear-gradient(135deg, #f97316, #ec4899)" }}>
-                            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">S</div>
+                            {profileImageUrl ? (
+                                <Image
+                                    src={profileImageUrl}
+                                    alt={profile?.full_name ?? user?.full_name ?? "Profile picture"}
+                                    width={36}
+                                    height={36}
+                                    unoptimized
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                                    {user?.full_name?.charAt(0).toUpperCase() ?? "S"}
+                                </div>
+                            )}
                         </div>
                         {!isCollapsed && (
                             <div>
                                 <div className="text-white font-semibold text-[13px]">{user?.full_name}</div>
-                                <div className="text-[#4ade80] text-[11px]">Referral Code: {user?.referral_code}</div>
                             </div>
                         )}
                     </div>
                     {!isCollapsed && (
                         <button
                             onClick={handleLogout}
-                            className="text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                            className="flex items-center gap-1 text-[#8b9ab0] hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
                             title="Logout"
                         >
+                            Logout
                             <LogOut className="w-4 h-4" />
                         </button>
                     )}

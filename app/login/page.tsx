@@ -82,14 +82,20 @@ export default function TalkToMyChildLogin() {
                 setUser({
                     user: response.data.user_data,
                     token: response.data.access_token,
+                    refreshToken: response.data.refresh_token,
                     role: response.data.role,
                 })
             );
             toast.success(response.message || "Login successful.");
             router.replace(getRedirectPath(response.data.role));
-        } catch (error: any) {
+        } catch (error: unknown) {
             const errorMessage =
-                error?.data?.message || error?.message || "Login failed. Please try again.";
+                typeof error === "object" && error !== null && "data" in error &&
+                    typeof error.data === "object" && error.data !== null && "message" in error.data
+                    ? String(error.data.message)
+                    : error instanceof Error
+                        ? error.message
+                        : "Login failed. Please try again.";
             toast.error(errorMessage);
         }
     };
