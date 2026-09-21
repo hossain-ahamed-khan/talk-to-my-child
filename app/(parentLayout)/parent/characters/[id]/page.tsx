@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
@@ -17,6 +17,13 @@ import {
     useGetCharacterListApiQuery,
 } from "@/redux/features/parent/characters/characterList";
 import { useDeleteCharacterMutation } from "@/redux/features/parent/characters/createCharacters";
+import { useGetChildListApiQuery } from "@/redux/features/profile/childList/childListApi";
+import {
+    useCreateCharacterInstructionMutation,
+    useDeleteCharacterInstructionMutation,
+    useGetCharacterInstructionsQuery,
+    useUpdateCharacterInstructionMutation,
+} from "@/redux/features/parent/characters/characterInstructions";
 import { useAppSelector } from "@/redux/hooks";
 
 const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_API_IMAGE_BASE_URL ?? "";
@@ -45,6 +52,19 @@ function formatDate(value: string) {
         month: "short",
         year: "numeric",
     });
+}
+
+function getApiErrorMessage(error: unknown) {
+    if (!error || typeof error !== "object") return "Unable to save this instruction. Please try again.";
+
+    const data = "data" in error ? error.data : null;
+    if (typeof data === "string" && data) return data;
+    if (data && typeof data === "object") {
+        const details = Object.values(data).flat().find((value) => typeof value === "string");
+        if (typeof details === "string") return details;
+    }
+
+    return "Unable to save this instruction. Please try again.";
 }
 
 function getStoredCharacter(id: string) {
@@ -153,6 +173,7 @@ export default function CharacterDetailsPage() {
                 ) : (
                     <>
                         <CharacterDetails character={character} onEdit={openEditModal} onDelete={handleDelete} isDeleting={isDeleting} />
+                        <CharacterInstructionsSection characterId={character.id} />
                         <CharacterCreateModal
                             open={isEditModalOpen}
                             form={form}
@@ -166,6 +187,129 @@ export default function CharacterDetailsPage() {
                 )}
             </main>
         </div>
+    );
+}
+
+function CharacterInstructionsSection({ characterId }: { characterId: number }) {
+    const { data: children = [], isLoading: isChildrenLoading } = useGetChildListApiQuery();
+    const [selectedChildId, setSelectedChildId] = useState("");
+    const [instruction, setInstruction] = useState("");
+    const [editingId, setEditingId] = useState<string | number | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const selectedChild = children.find((child) => child.id === selectedChildId);
+    const { data: instructions = [], isLoading, isFetching, isError } = useGetCharacterInstructionsQuery(
+        { childId: selectedChildId, characterId },
+        { skip: !selectedChildId },
+    );
+    const existingInstruction = instructions[0] ?? null;
+    const [createInstruction, { isLoading: isCreating }] = useCreateCharacterInstructionMutation();
+    const [updateInstruction, { isLoading: isUpdating }] = useUpdateCharacterInstructionMutation();
+    const [deleteInstruction, { isLoading: isDeleting }] = useDeleteCharacterInstructionMutation();
+
+    const resetForm = () => {
+        setInstruction("");
+        setEditingId(null);
+        setError(null);
+    };
+
+    const handleSubmit = async () => {
+        const value = instruction.trim();
+        if (!selectedChildId || !value) {
+            setError("Choose a child and enter an instruction first.");
+            return;
+        }
+
+        try {
+            if (editingId !== null || existingInstruction) {
+                await updateInstruction({ childId: selectedChildId, characterId, body: { parent_instructions: value } }).unwrap();
+            } else {
+                await createInstruction({ childId: selectedChildId, characterId, body: { parent_instructions: value } }).unwrap();
+            }
+            resetForm();
+        } catch (submitError: unknown) {
+            setError(getApiErrorMessage(submitError));
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selectedChildId || instructions.length === 0) return;
+        const confirmation = await Swal.fire({
+            title: "Delete instruction?",
+            text: `Remove the instruction for ${selectedChild?.name ?? "this child"}?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete it",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+        });
+        if (!confirmation.isConfirmed) return;
+
+        try {
+            await deleteInstruction({ childId: selectedChildId, characterId }).unwrap();
+            resetForm();
+        } catch (deleteError: unknown) {
+            setError(getApiErrorMessage(deleteError));
+        }
+    };
+
+    return (
+        <section style={styles.instructionsCard}>
+            <div style={styles.instructionsHeader}>
+                <div>
+                    <p style={styles.kicker}>Personalized guidance</p>
+                    <h2 style={styles.sectionTitle}>Child instructions</h2>
+                    <p style={styles.instructionsIntro}>Give this character guidance that applies to one specific child.</p>
+                </div>
+                <span style={styles.instructionCount}>{instructions.length} saved</span>
+            </div>
+
+            <div style={styles.instructionForm}>
+                <label style={styles.fieldLabel} htmlFor="instruction-child">Choose a child</label>
+                <select
+                    id="instruction-child"
+                    value={selectedChildId}
+                    onChange={(event) => { setSelectedChildId(event.target.value); resetForm(); }}
+                    style={styles.select}
+                    disabled={isChildrenLoading}
+                >
+                    <option value="">{isChildrenLoading ? "Loading children..." : "Select a child"}</option>
+                    {children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}
+                </select>
+
+                <label style={styles.fieldLabel} htmlFor="parent-instruction">Instruction</label>
+                <textarea
+                    id="parent-instruction"
+                    value={instruction}
+                    onChange={(event) => setInstruction(event.target.value)}
+                    placeholder="Example: Encourage Maya to explain new words with a story."
+                    rows={4}
+                    style={styles.textarea}
+                    disabled={!selectedChildId}
+                />
+                {error && <p style={styles.errorText}>{error}</p>}
+                <div style={styles.instructionActions}>
+                    {editingId !== null && <button type="button" style={styles.cancelButton} onClick={resetForm}>Cancel</button>}
+                    <button type="button" style={styles.editButton} onClick={handleSubmit} disabled={isCreating || isUpdating || !selectedChildId}>
+                        <Plus size={15} />
+                        {isCreating || isUpdating ? "Saving..." : editingId !== null || existingInstruction ? "Update instruction" : "Add instruction"}
+                    </button>
+                </div>
+            </div>
+
+            <div style={styles.savedInstructions}>
+                <h3 style={styles.savedTitle}>Saved for {selectedChild?.name ?? "selected child"}</h3>
+                {!selectedChildId ? <p style={styles.emptyText}>Select a child to view their instructions.</p> : isLoading || isFetching ? <p style={styles.emptyText}>Loading instructions...</p> : isError ? <p style={styles.errorText}>Unable to load instructions.</p> : instructions.length === 0 ? <p style={styles.emptyText}>No instructions have been added for this child.</p> : instructions.map((item) => (
+                    <article key={item.id} style={styles.instructionItem}>
+                        <p style={styles.instructionText}>{item.parent_instructions}</p>
+                        <div style={styles.itemActions}>
+                            <button type="button" style={styles.itemButton} onClick={() => { setEditingId(item.id); setInstruction(item.parent_instructions); }}>Edit</button>
+                            <button type="button" style={styles.itemDeleteButton} onClick={handleDelete} disabled={isDeleting}>Delete</button>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        </section>
     );
 }
 
@@ -281,4 +425,23 @@ const styles: Record<string, React.CSSProperties> = {
     stateTitle: { margin: "0 0 8px", color: "#e8f4f8", fontSize: "20px" },
     stateText: { margin: 0, color: "#8aaab8", lineHeight: 1.6 },
     loadingCard: { minHeight: "400px", borderRadius: "22px", border: "1px solid #1a3348", background: "#0d1e2d" },
+    instructionsCard: { marginTop: "18px", border: "1px solid #1a3348", borderRadius: "22px", background: "#0d1e2d", padding: "clamp(20px, 4vw, 32px)" },
+    instructionsHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", borderBottom: "1px solid #1a3348", paddingBottom: "20px" },
+    instructionsIntro: { color: "#8aaab8", lineHeight: 1.6, margin: "8px 0 0", fontSize: "14px" },
+    instructionCount: { color: "#7df0c3", background: "rgba(17,183,128,0.12)", borderRadius: "999px", padding: "7px 10px", fontSize: "12px", fontWeight: 700 },
+    instructionForm: { display: "grid", gap: "9px", maxWidth: "760px", marginTop: "24px" },
+    fieldLabel: { color: "#c8dde8", fontSize: "13px", fontWeight: 600 },
+    select: { width: "100%", minHeight: "42px", border: "1px solid #2a4c60", borderRadius: "10px", background: "#091520", color: "#e8f4f8", padding: "0 12px", fontSize: "14px", outline: "none" },
+    textarea: { width: "100%", boxSizing: "border-box", border: "1px solid #2a4c60", borderRadius: "10px", background: "#091520", color: "#e8f4f8", padding: "12px", fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6, resize: "vertical", outline: "none" },
+    instructionActions: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginTop: "5px" },
+    cancelButton: { border: "1px solid #2a4c60", borderRadius: "999px", background: "transparent", color: "#8aaab8", padding: "10px 14px", fontSize: "13px", fontWeight: 700, cursor: "pointer" },
+    errorText: { color: "#fca5a5", fontSize: "13px", margin: "2px 0 0" },
+    savedInstructions: { marginTop: "30px", paddingTop: "24px", borderTop: "1px solid #1a3348" },
+    savedTitle: { color: "#e8f4f8", fontSize: "16px", margin: "0 0 12px" },
+    emptyText: { color: "#8aaab8", fontSize: "14px", margin: 0, lineHeight: 1.6 },
+    instructionItem: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", border: "1px solid #1a3348", borderRadius: "12px", background: "#102536", padding: "14px 16px", marginTop: "10px", flexWrap: "wrap" },
+    instructionText: { color: "#c8dde8", lineHeight: 1.6, margin: 0, flex: "1 1 320px", whiteSpace: "pre-wrap" },
+    itemActions: { display: "flex", alignItems: "center", gap: "10px" },
+    itemButton: { border: 0, background: "transparent", color: "#7df0c3", padding: "4px", fontSize: "13px", fontWeight: 700, cursor: "pointer" },
+    itemDeleteButton: { border: 0, background: "transparent", color: "#fca5a5", padding: "4px", fontSize: "13px", fontWeight: 700, cursor: "pointer" },
 };
